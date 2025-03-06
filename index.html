@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>טופס בקשה - יציאה לחופשה לעובדי הטכנודע</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 15px;
+        }
+        
+        .header h1 {
+            color: #0056b3;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .header p {
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        .vacation-table {
+            width: 100%;
+            margin-top: 15px;
+            border-collapse: collapse;
+        }
+        
+        .vacation-table th, .vacation-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        .vacation-table th {
+            background-color: #f0f0f0;
+        }
+        
+        .signature-line {
+            width: 100%;
+            height: 1px;
+            border-bottom: 1px solid #000;
+            margin-top: 25px;
+        }
+        
+        .manager-name {
+            margin-bottom: 5px;
+        }
+        
+        .date-range-container {
+            position: relative;
+            margin-top: 20px;
+            height: 60px;
+        }
+        
+        .date-range-visual {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            overflow: hidden;
+        }
+        
+        .date-range-bar {
+            position: absolute;
+            height: 20px;
+            background-color: #3498db;
+            border-radius: 10px;
+            top: 10px;
+            opacity: 0.7;
+        }
+        
+        .date-range-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            color: #333;
+            font-weight: bold;
+            z-index: 2;
+        }
+        
+        .notes {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .notes h3 {
+            margin-bottom: 10px;
+            color: #0056b3;
+        }
+        
+        .notes ol {
+            padding-right: 20px;
+        }
+        
+        .notes li {
+            margin-bottom: 5px;
+        }
+        
+        .signature {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature .form-group {
+            width: 45%;
+        }
+        
+        .btn-submit {
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: block;
+            margin: 30px auto 0;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-submit:hover {
+            background-color: #003d7e;
+        }
+        
+        @media print {
+    body {
+        padding: 0;
+        background-color: white;
+        font-size: 13.2px; /* הגדלה מ-12px ל-13.2px (עוד 10%) */
+    }
+    
+    .container {
+        box-shadow: none;
+        padding: 20px; /* הגדלה מ-18px ל-20px */
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    .header {
+        margin-bottom: 13px;
+        padding-bottom: 7px;
+    }
+    
+    .header h1 {
+        font-size: 17.6px; /* הגדלה מ-16px ל-17.6px */
+    }
+    
+    .header p {
+        font-size: 13.2px; /* הגדלה מ-12px ל-13.2px */
+    }
+    
+    .form-group {
+        margin-bottom: 7px;
+    }
+    
+    .form-group label {
+        margin-bottom: 3.5px;
+        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
+    }
+    
+    .form-group input, .form-group textarea, .form-group select {
+        padding: 4.4px;
+        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
+        height: 26.4px;
+    }
+    
+    .form-group textarea {
+        height: 39.6px;
+    }
+    
+    .form-row {
+        gap: 7px;
+        margin-bottom: 7px;
+    }
+    
+    .vacation-table th, .vacation-table td {
+        padding: 3.3px;
+        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
+    }
+    
+    .manager-name {
+        font-size: 11px; /* הגדלה מ-10px ל-11px */
+    }
+    
+    .signature-line {
+        margin-top: 20px;
+    }
+    
+    .notes {
+        margin-top: 13px;
+        padding: 7px;
+        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
+    }
+    
+    .signature {
+        margin-top: 13px;
+        gap: 7px;
+    }
+    
+    .date-range-container {
+        display: none;
+    }
+    
+    .btn-submit, .btn-clear, #printButton {
+        display: none;
+    }
+    
+    @page {
+        size: A4;
+        margin: 0.5cm;
+    }
+}
+        
+        @media (max-width: 600px) {
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .signature {
+                flex-direction: column;
+            }
+            
+            .signature .form-group {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>טופס בקשה - יציאה לחופשה לעובדי הטכנודע</h1>
+            <p>ימולא ע"י העובד/ת</p>
+        </div>
+        
+        <form id="vacationForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">שם העובד/ת:</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">טלפון:</label>
+                    <input type="tel" id="phone" name="phone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="department">מחלקה/יחידה:</label>
+                    <input type="text" id="department" name="department" required>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="requestDate">1. תאריך הגשת הבקשה:</label>
+                <input type="date" id="requestDate" name="requestDate" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="vacationReason">2. סיבת הבקשה לחופשה מיוחדת:</label>
+                <textarea id="vacationReason" name="vacationReason" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>3. מועדי החופשה:</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="startDate">אני מבקש/ת חופשה מתאריך:</label>
+                        <input type="date" id="startDate" name="startDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="endDate">ועד לתאריך:</label>
+                        <input type="date" id="endDate" name="endDate" required>
+                    </div>
+                </div>
+                <div id="dateRangeContainer" class="date-range-container">
+                    <div class="date-range-visual">
+                        <div class="date-range-bar" id="dateRangeBar"></div>
+                        <div class="date-range-text" id="dateRangeText">בחר תאריך התחלה וסיום</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="emergencyProtocol">4. פעילות אקדמית בתקופת היעדרותי (במידה ותאושר):</label>
+                <textarea id="emergencyProtocol" name="emergencyProtocol" placeholder="אני יודע/ת כי במהלך היעדרותי מתקיימים האירועים או הפעילויות הבאות:"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>5. אישורי ממונה:</label>
+                
+                <table class="vacation-table">
+                    <tr>
+                        <th>עובד/ת אקדמי</th>
+                        <th>אישור ממונה</th>
+                        <th>חתימת אישור גדי</th>
+                    </tr>
+                    <tr>
+                        <td>עובד/ת אקדמי</td>
+                        <td>
+                            <div class="manager-name">חתימה של אמילי</div>
+                            <div class="signature-line"></div>
+                        </td>
+                        <td><div class="signature-line"></div></td>
+                    </tr>
+                    <tr>
+                        <td>עובד אחזקה</td>
+                        <td>
+                            <div class="manager-name">חתימה של זיו</div>
+                            <div class="signature-line"></div>
+                        </td>
+                        <td><div class="signature-line"></div></td>
+                    </tr>
+                    <tr>
+                        <td>עובד/ת משרד</td>
+                        <td>
+                            <div class="manager-name">חתימה של דינה</div>
+                            <div class="signature-line"></div>
+                        </td>
+                        <td><div class="signature-line"></div></td>
+                    </tr>
+                    <tr>
+                        <td>עובד/ת מחלקת כספים</td>
+                        <td>
+                            <div class="manager-name">חתימה של שולי</div>
+                            <div class="signature-line"></div>
+                        </td>
+                        <td><div class="signature-line"></div></td>
+                    </tr>
+                    <tr>
+                        <td>עובד/ת מעבדה</td>
+                        <td>
+                            <div class="manager-name">חתימה של לירון</div>
+                            <div class="signature-line"></div>
+                        </td>
+                        <td><div class="signature-line"></div></td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="notes">
+                <h3>הערות:</h3>
+                <ol>
+                    <li>היציאה לחופשה של עובד/ת מאושרת רק לאחר חתימת הממונה הישיר ומנכ"ל הטכנודע.</li>
+                    <li>על העובד/ת לבדוק האם אושרה בקשתו/ה ולבקש עותם מהטופס החתום</li>
+                </ol>
+            </div>
+            
+            <div class="signature">
+                <div class="form-group">
+                    <label for="employeeName">שם העובד/ת שמבקש/ת:</label>
+                    <input type="text" id="employeeName" name="employeeName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="employeeSignature">חתימה:</label>
+                    <canvas id="employeeSignatureCanvas" class="signature-pad" width="300" height="100"></canvas>
+                    <button type="button" class="btn-clear" id="clearSignature">נקה חתימה</button>
+                </div>
+            </div>
+            
+            <button type="button" class="btn-submit" id="printButton">הדפס</button>
+        </form>
+    </div>
+    
+    <script>
+        // הגדרת תאריך היום כברירת מחדל
+        function setTodayAsDefault() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${yyyy}-${mm}-${dd}`;
+            
+            document.getElementById('requestDate').value = formattedDate;
+        }
+        
+        // טיפול בטווח התאריכים
+        function setupDateRange() {
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+    const dateRangeBar = document.getElementById('dateRangeBar');
+    const dateRangeText = document.getElementById('dateRangeText');
+    
+    // קבלת התאריך הנוכחי
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const formattedToday = `${yyyy}-${mm}-${dd}`;
+    
+    // הגבלת תאריכים לעתיד בלבד
+    startDate.min = formattedToday;
+    endDate.min = formattedToday;
+    
+    function updateDateRange() {
+        if (!startDate.value || !endDate.value) return;
+        
+        const start = new Date(startDate.value);
+        const end = new Date(endDate.value);
+        
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+        
+        // וודא שתאריך הסיום מאוחר יותר מתאריך ההתחלה
+        if (end < start) {
+            dateRangeText.textContent = "שגיאה: תאריך הסיום מוקדם מתאריך ההתחלה";
+            dateRangeBar.style.width = "0%";
+            dateRangeBar.style.left = "0%";
+            return;
+        }
+        
+        // חישוב מספר הימים
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // כולל את היום הראשון והאחרון
+        
+        // הצגת מספר הימים
+        dateRangeText.textContent = `סה"כ ${diffDays} ימי חופשה`;
+        
+        // עדכון סרגל הימים
+        const totalDays = 30; // נניח שהמקסימום הוא 30 יום
+        const width = Math.min(100, (diffDays / totalDays) * 100);
+        dateRangeBar.style.width = `${width}%`;
+        dateRangeBar.style.left = "0%";
+    }
+    
+    startDate.addEventListener('change', function() {
+        // וודא שתאריך ההתחלה לא לפני היום
+        if (this.value < formattedToday) {
+            this.value = formattedToday;
+        }
+        
+        // וודא שתאריך הסיום לא לפני תאריך ההתחלה
+        if (endDate.value && endDate.value < this.value) {
+            endDate.value = this.value;
+        }
+        
+        updateDateRange();
+    });
+    
+    endDate.addEventListener('change', function() {
+        // וודא שתאריך הסיום לא לפני היום
+        if (this.value < formattedToday) {
+            this.value = formattedToday;
+        }
+        
+        // וודא שתאריך הסיום לא לפני תאריך ההתחלה
+        if (startDate.value && this.value < startDate.value) {
+            this.value = startDate.value;
+        }
+        
+        updateDateRange();
+    });
+    
+    // מנגנון הפוך עבור חיצי ההגדלה וההקטנה של תאריך
+    function reverseArrows(inputElement) {
+        inputElement.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                
+                const currentDate = new Date(this.value || formattedToday);
+                if (isNaN(currentDate.getTime())) return;
+                
+                // עכשיו חץ למעלה מגדיל חודשים קדימה, חץ למטה מחזיר חודשים אחורה
+                const months = e.key === 'ArrowUp' ? 1 : -1;
+                currentDate.setMonth(currentDate.getMonth() + months);
+                
+                // וודא שהתאריך לא לפני היום
+                const minimumDate = new Date(today);
+                if (currentDate < minimumDate) {
+                    currentDate.setMonth(minimumDate.getMonth());
+                    currentDate.setFullYear(minimumDate.getFullYear());
+                }
+                
+                const yyyy = currentDate.getFullYear();
+                const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(currentDate.getDate()).padStart(2, '0');
+                this.value = `${yyyy}-${mm}-${dd}`;
+                
+                updateDateRange();
+            }
+        });
+    }
+    
+    reverseArrows(startDate);
+    reverseArrows(endDate);
+}
+        
+// שיפור פונקציית החתימה הדיגיטלית
+function initSignaturePad(canvasId, clearButtonId) {
+    const canvas = document.getElementById(canvasId);
+    const clearButton = document.getElementById(clearButtonId);
+    
+    if (!canvas || !clearButton) return;
+
+    // הגדרת הקנבס לרזולוציה גבוהה
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+
+    // הוספת מסגרת לקנבס
+    canvas.style.border = '1px solid #333';
+    canvas.style.borderRadius = '5px';
+    canvas.style.backgroundColor = '#f9f9f9';
+
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    // פונקציה לקבלת מיקום העכבר/מגע
+    function getCoordinates(e) {
+        const boundingRect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / boundingRect.width;
+        const scaleY = canvas.height / boundingRect.height;
+        
+        let clientX, clientY;
+        
+        // תמיכה באירועי עכבר ומגע
+        if (e.type.startsWith('touch')) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        return {
+            x: (clientX - boundingRect.left) * scaleX / dpr,
+            y: (clientY - boundingRect.top) * scaleY / dpr
+        };
+    }
+
+    // התחלת ציור
+    function startDrawing(e) {
+        e.preventDefault();
+        isDrawing = true;
+        const coords = getCoordinates(e);
+        lastX = coords.x;
+        lastY = coords.y;
+    }
+
+    // ביצוע ציור
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        
+        const coords = getCoordinates(e);
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(coords.x, coords.y);
+        ctx.stroke();
+        
+        lastX = coords.x;
+        lastY = coords.y;
+    }
+
+    // עצירת ציור
+    function stopDrawing(e) {
+        e.preventDefault();
+        isDrawing = false;
+    }
+
+    // מאזינים לאירועי עכבר
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // מאזינים לאירועי מגע
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing, { passive: false });
+
+    // כפתור ניקוי חתימה
+    clearButton.addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // סגנון כפתור ניקוי
+    clearButton.style.backgroundColor = '#ffdddd';
+    clearButton.style.color = '#CC0000';
+    clearButton.style.border = '1px solid #CC0000';
+    clearButton.style.padding = '8px 12px';
+    clearButton.style.borderRadius = '5px';
+    clearButton.style.cursor = 'pointer';
+    clearButton.style.transition = 'background-color 0.3s';
+
+    // אפקט hover לכפתור
+    clearButton.addEventListener('mouseenter', () => {
+        clearButton.style.backgroundColor = '#ffcccc';
+    });
+
+    clearButton.addEventListener('mouseleave', () => {
+        clearButton.style.backgroundColor = '#ffdddd';
+    });
+}
+
+// הוספת הפעלה בעת טעינת העמוד
+window.addEventListener('load', () => {
+    initSignaturePad('employeeSignatureCanvas', 'clearSignature');
+});
+        
+        // הפעל את כל הפונקציות בטעינת העמוד
+        window.onload = function() {
+            // הגדר תאריך היום כברירת מחדל
+            setTodayAsDefault();
+            
+            // הגדר את טווח התאריכים
+            setupDateRange();
+            
+            // הגדר את אזור החתימה
+            setupSignaturePad("employeeSignatureCanvas", "clearSignature");
+            
+            // הפעל את כפתור ההדפסה
+            document.getElementById('printButton').addEventListener('click', function() {
+                window.print();
+            });
+        };
+        window.addEventListener('load', function() {
+    // הגדר תאריך היום כברירת מחדל
+    setTodayAsDefault();
+    
+    // הגדר את טווח התאריכים
+    setupDateRange();
+    
+    // הגדר את אזור החתימה
+    initSignaturePad("employeeSignatureCanvas", "clearSignature");
+    
+    // הפעל את כפתור ההדפסה
+    document.getElementById('printButton').addEventListener('click', function() {
+        // השג את מופע החתימה
+        const signatureCanvas = document.getElementById('employeeSignatureCanvas');
+        
+        // אם יש חתימה, הדפס
+        if (signatureCanvas) {
+            // נסה להמיר את החתימה לתמונה אם יש צורך
+            const signatureDataUrl = signatureCanvas.toDataURL();
+            
+            // הדפס
+            window.print();
+        } else {
+            // אם אין חתימה, הדפס רגיל
+            window.print();
+        }
+    });
+});
+    </script>
+</body>
+</html>
