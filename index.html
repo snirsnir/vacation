@@ -1,728 +1,337 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>טופס בקשה - יציאה לחופשה לעובדי הטכנודע</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: #f5f5f5;
-            padding: 20px;
-            direction: rtl;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #0056b3;
-            padding-bottom: 15px;
-        }
-        
-        .header h1 {
-            color: #0056b3;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .header p {
-            color: #555;
-            font-size: 14px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .form-group textarea {
-            height: 80px;
-            resize: vertical;
-        }
-        
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .form-row .form-group {
-            flex: 1;
-            margin-bottom: 0;
-        }
-        
-        .vacation-table {
-            width: 100%;
-            margin-top: 15px;
-            border-collapse: collapse;
-        }
-        
-        .vacation-table th, .vacation-table td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-        
-        .vacation-table th {
-            background-color: #f0f0f0;
-        }
-        
-        .signature-line {
-            width: 100%;
-            height: 1px;
-            border-bottom: 1px solid #000;
-            margin-top: 25px;
-        }
-        
-        .manager-name {
-            margin-bottom: 5px;
-        }
-        
-        .date-range-row {
-            position: relative;
-            align-items: flex-end;
-        }
-
-        .btn-remove-date {
-            background-color: #ffdddd;
-            color: #cc0000;
-            border: 1px solid #cc0000;
-            padding: 8px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-            margin-bottom: 0;
-            white-space: nowrap;
-            align-self: flex-end;
-        }
-
-        .btn-remove-date:hover {
-            background-color: #ffcccc;
-        }
-
-        .btn-add-date {
-            background-color: #e8f4e8;
-            color: #0056b3;
-            border: 1px dashed #0056b3;
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-            display: inline-block;
-        }
-
-        .btn-add-date:hover {
-            background-color: #d0e8ff;
-        }
-
-        .date-range-container {
-            position: relative;
-            margin-top: 20px;
-            height: 60px;
-        }
-        
-        .date-range-visual {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 40px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
-            overflow: hidden;
-        }
-        
-        .date-range-bar {
-            position: absolute;
-            height: 20px;
-            background-color: #3498db;
-            border-radius: 10px;
-            top: 10px;
-            opacity: 0.7;
-        }
-        
-        .date-range-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            font-size: 12px;
-            color: #333;
-            font-weight: bold;
-            z-index: 2;
-        }
-        
-        .notes {
-            margin-top: 30px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .notes h3 {
-            margin-bottom: 10px;
-            color: #0056b3;
-        }
-        
-        .notes ol {
-            padding-right: 20px;
-        }
-        
-        .notes li {
-            margin-bottom: 5px;
-        }
-        
-        .signature {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .signature .form-group {
-            width: 45%;
-        }
-        
-        .btn-submit {
-            background-color: #0056b3;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            display: block;
-            margin: 30px auto 0;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-submit:hover {
-            background-color: #003d7e;
-        }
-        
-        @media print {
-    body {
-        padding: 0;
-        background-color: white;
-        font-size: 13.2px; /* הגדלה מ-12px ל-13.2px (עוד 10%) */
-    }
-    
-    .container {
-        box-shadow: none;
-        padding: 20px; /* הגדלה מ-18px ל-20px */
-        max-width: 100%;
-        margin: 0;
-    }
-    
-    .header {
-        margin-bottom: 13px;
-        padding-bottom: 7px;
-    }
-    
-    .header h1 {
-        font-size: 17.6px; /* הגדלה מ-16px ל-17.6px */
-    }
-    
-    .header p {
-        font-size: 13.2px; /* הגדלה מ-12px ל-13.2px */
-    }
-    
-    .form-group {
-        margin-bottom: 7px;
-    }
-    
-    .form-group label {
-        margin-bottom: 3.5px;
-        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
-    }
-    
-    .form-group input, .form-group textarea, .form-group select {
-        padding: 4.4px;
-        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
-        height: 26.4px;
-    }
-    
-    .form-group textarea {
-        height: 39.6px;
-    }
-    
-    .form-row {
-        gap: 7px;
-        margin-bottom: 7px;
-    }
-    
-    .vacation-table th, .vacation-table td {
-        padding: 3.3px;
-        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
-    }
-    
-    .manager-name {
-        font-size: 11px; /* הגדלה מ-10px ל-11px */
-    }
-    
-    .signature-line {
-        margin-top: 20px;
-    }
-    
-    .notes {
-        margin-top: 13px;
-        padding: 7px;
-        font-size: 12.1px; /* הגדלה מ-11px ל-12.1px */
-    }
-    
-    .signature {
-        margin-top: 13px;
-        gap: 7px;
-    }
-    
-    .date-range-container {
-        display: none;
-    }
-    
-    .btn-submit, .btn-clear, #printButton {
-        display: none;
-    }
-    
-    @page {
-        size: A4;
-        margin: 0.5cm;
-    }
-}
-        
-        @media (max-width: 600px) {
-            .form-row {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .signature {
-                flex-direction: column;
-            }
-            
-            .signature .form-group {
-                width: 100%;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מערכת חופשות — טכנודע</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>טופס בקשה - יציאה לחופשה לעובדי הטכנודע</h1>
-            <p>ימולא ע"י העובד/ת</p>
-        </div>
-        
-        <form id="vacationForm">
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="name">שם העובד/ת:</label>
-                    <input type="text" id="name" name="name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="phone">טלפון:</label>
-                    <input type="tel" id="phone" name="phone" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="department">מחלקה/יחידה:</label>
-                    <input type="text" id="department" name="department" required>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="requestDate">1. תאריך הגשת הבקשה:</label>
-                <input type="date" id="requestDate" name="requestDate" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="vacationReason">2. סיבת הבקשה לחופשה מיוחדת:</label>
-                <textarea id="vacationReason" name="vacationReason" required></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>3. מועדי החופשה:</label>
-                <div id="dateRangesContainer">
-                    <div class="form-row date-range-row">
-                        <div class="form-group">
-                            <label>מתאריך:</label>
-                            <input type="date" id="startDate" name="startDate[]" class="start-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label>עד תאריך:</label>
-                            <input type="date" id="endDate" name="endDate[]" class="end-date" required>
-                        </div>
-                    </div>
-                </div>
-                <button type="button" id="addDateRange" class="btn-add-date">+ הוסף תאריכים נוספים</button>
-                <div id="dateRangeContainer" class="date-range-container">
-                    <div class="date-range-visual">
-                        <div class="date-range-bar" id="dateRangeBar"></div>
-                        <div class="date-range-text" id="dateRangeText"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="emergencyProtocol">4. פעילות אקדמית בתקופת היעדרותי (במידה ותאושר):</label>
-                <textarea id="emergencyProtocol" name="emergencyProtocol" placeholder="אני יודע/ת כי במהלך היעדרותי מתקיימים האירועים או הפעילויות הבאות:"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>5. אישורי ממונה:</label>
-                
-                <table class="vacation-table">
-                    <tr>
-                        <th>עובד/ת אקדמי</th>
-                        <th>אישור ממונה</th>
-                        <th>חתימת אישור גדי</th>
-                    </tr>
-                    <tr>
-                        <td>עובד/ת אקדמי</td>
-                        <td>
-                            <div class="manager-name">חתימה של אמילי</div>
-                            <div class="signature-line"></div>
-                        </td>
-                        <td><div class="signature-line"></div></td>
-                    </tr>
-                    <tr>
-                        <td>עובד אחזקה</td>
-                        <td>
-                            <div class="manager-name">חתימה של זיו</div>
-                            <div class="signature-line"></div>
-                        </td>
-                        <td><div class="signature-line"></div></td>
-                    </tr>
-                    <tr>
-                        <td>עובד/ת משרד</td>
-                        <td>
-                            <div class="manager-name">חתימה של דינה</div>
-                            <div class="signature-line"></div>
-                        </td>
-                        <td><div class="signature-line"></div></td>
-                    </tr>
-                    <tr>
-                        <td>עובד/ת מחלקת כספים</td>
-                        <td>
-                            <div class="manager-name">חתימה של שולי</div>
-                            <div class="signature-line"></div>
-                        </td>
-                        <td><div class="signature-line"></div></td>
-                    </tr>
-                    <tr>
-                        <td>עובד/ת מעבדה</td>
-                        <td>
-                            <div class="manager-name">חתימה של לירון</div>
-                            <div class="signature-line"></div>
-                        </td>
-                        <td><div class="signature-line"></div></td>
-                    </tr>
-                </table>
-            </div>
-            
-            <div class="notes">
-                <h3>הערות:</h3>
-                <ol>
-                    <li>היציאה לחופשה של עובד/ת מאושרת רק לאחר חתימת הממונה הישיר ומנכ"ל הטכנודע.</li>
-                    <li>על העובד/ת לבדוק האם אושרה בקשתו/ה ולבקש עותם מהטופס החתום</li>
-                </ol>
-            </div>
-            
-            <div class="signature">
-                <div class="form-group">
-                    <label for="employeeName">שם העובד/ת שמבקש/ת:</label>
-                    <input type="text" id="employeeName" name="employeeName" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="employeeSignature">חתימה:</label>
-                    <canvas id="employeeSignatureCanvas" class="signature-pad" width="300" height="100"></canvas>
-                    <button type="button" class="btn-clear" id="clearSignature">נקה חתימה</button>
-                </div>
-            </div>
-            
-            <button type="button" class="btn-submit" id="printButton">הדפס</button>
-        </form>
+
+<!-- ════════════════════════════════════════════════════════
+     LOADING OVERLAY
+════════════════════════════════════════════════════════ -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p style="color:#0056b3;font-weight:700;">טוען...</p>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════
+     VIEW: LOGIN
+════════════════════════════════════════════════════════ -->
+<div class="view active" id="loginView">
+  <div class="login-card">
+    <div class="logo">🏖️</div>
+    <h1>מערכת חופשות טכנודע</h1>
+    <p>כניסה לעובדים ורכזים</p>
+    <button class="btn-google" id="btnGoogleLogin">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+      כניסה עם חשבון Google
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     MAIN LAYOUT (shown after login)
+════════════════════════════════════════════════════════ -->
+<div class="view" id="mainView">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <span class="topbar-brand">🏖️ מערכת חופשות טכנודע</span>
+    <div class="topbar-user">
+      <img id="userAvatar" src="" alt="" onerror="this.style.display='none'" />
+      <span id="userName">—</span>
+      <button class="btn-logout" id="btnLogout">יציאה</button>
     </div>
-    
-    <script>
-        // הגדרת תאריך היום כברירת מחדל
-        function setTodayAsDefault() {
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${yyyy}-${mm}-${dd}`;
-            
-            document.getElementById('requestDate').value = formattedDate;
-        }
-        
-        // טיפול בטווח התאריכים
-        function setupDateRange() {
-    const dateRangeBar = document.getElementById('dateRangeBar');
-    const dateRangeText = document.getElementById('dateRangeText');
-    const container = document.getElementById('dateRangesContainer');
-    const addBtn = document.getElementById('addDateRange');
+  </div>
 
-    function calcDays(startVal, endVal) {
-        if (!startVal || !endVal) return 0;
-        const s = new Date(startVal);
-        const e = new Date(endVal);
-        if (isNaN(s) || isNaN(e) || e < s) return 0;
-        return Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
-    }
+  <!-- Manager Nav Tabs (hidden for coordinators) -->
+  <div class="nav-tabs" id="managerTabs" style="display:none">
+    <button class="nav-tab active" data-tab="allRequests">כל הבקשות</button>
+    <button class="nav-tab" data-tab="myVacations">החופשות שלי</button>
+    <button class="nav-tab" data-tab="announcement">אני בחופש 🏖️</button>
+  </div>
 
-    function updateTotal() {
-        const rows = container.querySelectorAll('.date-range-row');
-        let total = 0;
-        let hasError = false;
+  <!-- Page Content -->
+  <div class="page-content">
 
-        rows.forEach(row => {
-            const s = row.querySelector('.start-date').value;
-            const e = row.querySelector('.end-date').value;
-            if (s && e && new Date(e) < new Date(s)) {
-                hasError = true;
-            }
-            total += calcDays(s, e);
-        });
+    <!-- ── TAB: Coordinator / My Vacations ── -->
+    <div id="tabMyVacations">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">החופשות שלי</span>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <div class="view-toggle">
+              <button id="btnTableView" class="active">📋 טבלה</button>
+              <button id="btnCalView">📅 יומן</button>
+            </div>
+            <button class="btn-new-request" id="btnNewRequest">＋ בקשה חדשה</button>
+          </div>
+        </div>
 
-        if (hasError) {
-            dateRangeText.textContent = 'שגיאה: תאריך סיום מוקדם מתאריך התחלה';
-            dateRangeBar.style.width = '0%';
-            return;
-        }
+        <!-- Table View -->
+        <div id="tableView">
+          <table class="data-table" id="myRequestsTable">
+            <thead>
+              <tr>
+                <th>תאריכי חופשה</th>
+                <th>ימים</th>
+                <th>סיבה</th>
+                <th>סטטוס</th>
+                <th>פעולות</th>
+              </tr>
+            </thead>
+            <tbody id="myRequestsBody">
+              <tr><td colspan="5"><div class="empty-state"><div class="icon">📭</div><p>אין בקשות עדיין</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
 
-        if (total > 0) {
-            dateRangeText.textContent = `סה"כ ${total} ימי חופשה`;
-            dateRangeBar.style.width = `${Math.min(100, (total / 30) * 100)}%`;
-        } else {
-            dateRangeText.textContent = '';
-            dateRangeBar.style.width = '0%';
-        }
-    }
+        <!-- Calendar View -->
+        <div id="calendarView" style="display:none">
+          <div class="calendar-nav">
+            <button id="calPrev">›</button>
+            <h3 id="calMonthTitle"></h3>
+            <button id="calNext">‹</button>
+          </div>
+          <div class="calendar-grid" id="calHeaders"></div>
+          <div class="calendar-grid" id="calCells"></div>
+        </div>
+      </div>
 
-    function attachRowListeners(row) {
-        row.querySelectorAll('input[type="date"]').forEach(input => {
-            input.addEventListener('change', updateTotal);
-        });
-        const removeBtn = row.querySelector('.btn-remove-date');
-        if (removeBtn) {
-            removeBtn.addEventListener('click', () => {
-                row.remove();
-                updateTotal();
-            });
-        }
-    }
+      <!-- Manager Announcements for coordinator -->
+      <div id="announcementsSection" class="card" style="display:none">
+        <div class="card-title" style="margin-bottom:12px">📢 הודעות מנהלים</div>
+        <div id="announcementsList"></div>
+      </div>
+    </div>
 
-    // צרף מאזינים לשורה הראשונה
-    attachRowListeners(container.querySelector('.date-range-row'));
+    <!-- ── TAB: All Requests (Manager only) ── -->
+    <div id="tabAllRequests" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">בקשות חופש — לאישור</span>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>שם הרכז</th>
+              <th>תאריכים</th>
+              <th>ימים</th>
+              <th>סיבה</th>
+              <th>סטטוס</th>
+              <th>פעולות</th>
+            </tr>
+          </thead>
+          <tbody id="allRequestsBody">
+            <tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>אין בקשות</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-    addBtn.addEventListener('click', () => {
-        const newRow = document.createElement('div');
-        newRow.className = 'form-row date-range-row';
-        newRow.innerHTML = `
+    <!-- ── TAB: Announcement (Manager only) ── -->
+    <div id="tabAnnouncement" style="display:none">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏖️ הודע שאתה בחופש</span>
+        </div>
+        <div class="form-group">
+          <label>מתאריך:</label>
+          <input type="date" id="announcementStart" />
+        </div>
+        <div class="form-group">
+          <label>עד תאריך:</label>
+          <input type="date" id="announcementEnd" />
+        </div>
+        <div class="form-group">
+          <label>מי יקבל הודעה? (בחר מהרשימה)</label>
+          <div id="announcementTargets" style="display:flex;flex-direction:column;gap:8px;margin-top:6px;"></div>
+        </div>
+        <button class="btn btn-primary" id="btnSendAnnouncement">שלח הודעה</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">ההודעות ששלחת</div>
+        <div id="myAnnouncementsList">
+          <div class="empty-state"><div class="icon">📭</div><p>אין הודעות</p></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-content -->
+</div><!-- /mainView -->
+
+
+<!-- ════════════════════════════════════════════════════════
+     MODAL: New Request
+════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalNewRequest">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>＋ בקשת חופש חדשה</h2>
+      <button class="modal-close" data-close="modalNewRequest">✕</button>
+    </div>
+
+    <form id="formNewRequest">
+      <!-- Read-only user info -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>שם העובד/ת:</label>
+          <input type="text" id="reqUserName" readonly style="background:#f5f5f5" />
+        </div>
+        <div class="form-group">
+          <label>תאריך הגשה:</label>
+          <input type="date" id="reqDate" readonly style="background:#f5f5f5" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="reqReason">סיבת הבקשה: <span style="color:red">*</span></label>
+        <textarea id="reqReason" required placeholder="פרט/י את סיבת הבקשה לחופשה..."></textarea>
+      </div>
+
+      <!-- Date Ranges -->
+      <div class="form-group">
+        <label>מועדי החופשה: <span style="color:red">*</span></label>
+        <div id="reqDatesContainer">
+          <div class="form-row date-range-row">
             <div class="form-group">
-                <label>מתאריך:</label>
-                <input type="date" name="startDate[]" class="start-date" required>
+              <label>מתאריך:</label>
+              <input type="date" class="req-start-date" required />
             </div>
             <div class="form-group">
-                <label>עד תאריך:</label>
-                <input type="date" name="endDate[]" class="end-date" required>
+              <label>עד תאריך:</label>
+              <input type="date" class="req-end-date" required />
             </div>
-            <button type="button" class="btn-remove-date" title="הסר">−</button>
-        `;
-        container.appendChild(newRow);
-        attachRowListeners(newRow);
-    });
-}
-        
-// שיפור פונקציית החתימה הדיגיטלית
-function initSignaturePad(canvasId, clearButtonId) {
-    const canvas = document.getElementById(canvasId);
-    const clearButton = document.getElementById(clearButtonId);
-    
-    if (!canvas || !clearButton) return;
+          </div>
+        </div>
+        <button type="button" class="btn-add-date" id="reqAddDate">＋ הוסף תאריכים נוספים</button>
+        <div class="days-counter" id="reqDaysCounter" style="display:none"></div>
+      </div>
 
-    // הגדרת הקנבס לרזולוציה גבוהה
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    
-    ctx.scale(dpr, dpr);
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
+      <div class="form-group">
+        <label for="reqActivities">פעילות אקדמית בתקופת היעדרותי:</label>
+        <textarea id="reqActivities" placeholder="אני יודע/ת כי במהלך היעדרותי מתקיימים האירועים הבאים:"></textarea>
+      </div>
 
-    // הוספת מסגרת לקנבס
-    canvas.style.border = '1px solid #333';
-    canvas.style.borderRadius = '5px';
-    canvas.style.backgroundColor = '#f9f9f9';
+      <!-- Approval Table -->
+      <div class="form-group">
+        <label>אישורי ממונה:</label>
+        <table class="approval-table" id="reqApprovalTable">
+          <thead>
+            <tr>
+              <th>תפקיד</th>
+              <th>ממונה</th>
+              <th>הערה</th>
+            </tr>
+          </thead>
+          <tbody id="reqApprovalBody"></tbody>
+        </table>
+      </div>
 
-    let isDrawing = false;
-    let lastX = 0;
-    let lastY = 0;
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+        <button type="button" class="btn btn-outline" data-close="modalNewRequest">ביטול</button>
+        <button type="submit" class="btn btn-primary" id="btnSubmitRequest">📤 שלח בקשה</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-    // פונקציה לקבלת מיקום העכבר/מגע
-    function getCoordinates(e) {
-        const boundingRect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / boundingRect.width;
-        const scaleY = canvas.height / boundingRect.height;
-        
-        let clientX, clientY;
-        
-        // תמיכה באירועי עכבר ומגע
-        if (e.type.startsWith('touch')) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        
-        return {
-            x: (clientX - boundingRect.left) * scaleX / dpr,
-            y: (clientY - boundingRect.top) * scaleY / dpr
-        };
-    }
 
-    // התחלת ציור
-    function startDrawing(e) {
-        e.preventDefault();
-        isDrawing = true;
-        const coords = getCoordinates(e);
-        lastX = coords.x;
-        lastY = coords.y;
-    }
+<!-- ════════════════════════════════════════════════════════
+     MODAL: Request Detail / Thread
+════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalRequestDetail">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="detailTitle">פרטי הבקשה</h2>
+      <button class="modal-close" data-close="modalRequestDetail">✕</button>
+    </div>
 
-    // ביצוע ציור
-    function draw(e) {
-        if (!isDrawing) return;
-        e.preventDefault();
-        
-        const coords = getCoordinates(e);
-        
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(coords.x, coords.y);
-        ctx.stroke();
-        
-        lastX = coords.x;
-        lastY = coords.y;
-    }
+    <!-- Request Info -->
+    <div id="detailInfo" style="margin-bottom:16px;font-size:14px;line-height:1.8;background:#f8f9fa;padding:14px;border-radius:8px;"></div>
 
-    // עצירת ציור
-    function stopDrawing(e) {
-        e.preventDefault();
-        isDrawing = false;
-    }
+    <!-- Status Badge -->
+    <div style="margin-bottom:16px;" id="detailStatusWrap"></div>
 
-    // מאזינים לאירועי עכבר
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
+    <!-- Manager Action Buttons (shown only to manager) -->
+    <div id="managerActions" style="display:none;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-success btn-sm" id="btnApprove">✅ אשר</button>
+      <button class="btn btn-danger btn-sm" id="btnReject">❌ דחה</button>
+      <button class="btn btn-outline btn-sm" id="btnSendMsg">💬 שלח הודעה</button>
+    </div>
 
-    // מאזינים לאירועי מגע
-    canvas.addEventListener('touchstart', startDrawing, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing, { passive: false });
+    <!-- Message Thread -->
+    <div style="font-weight:700;color:#0056b3;margin-bottom:8px;font-size:14px;">💬 שיחה</div>
+    <div class="thread" id="messageThread"></div>
 
-    // כפתור ניקוי חתימה
-    clearButton.addEventListener('click', () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    });
+    <!-- Reply box (shown when there's a message to reply to) -->
+    <div id="replyBox" style="display:none;margin-top:12px;">
+      <div class="form-group">
+        <textarea id="replyText" rows="3" placeholder="כתוב תגובה..."></textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-primary btn-sm" id="btnSendReply">שלח תגובה</button>
+      </div>
+    </div>
 
-    // סגנון כפתור ניקוי
-    clearButton.style.backgroundColor = '#ffdddd';
-    clearButton.style.color = '#CC0000';
-    clearButton.style.border = '1px solid #CC0000';
-    clearButton.style.padding = '8px 12px';
-    clearButton.style.borderRadius = '5px';
-    clearButton.style.cursor = 'pointer';
-    clearButton.style.transition = 'background-color 0.3s';
+    <!-- Message input (for manager) -->
+    <div id="managerMsgBox" style="display:none;margin-top:12px;">
+      <div class="form-group">
+        <textarea id="managerMsgText" rows="3" placeholder="כתוב הודעה לרכז..."></textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-primary btn-sm" id="btnSendManagerMsg">שלח</button>
+      </div>
+    </div>
 
-    // אפקט hover לכפתור
-    clearButton.addEventListener('mouseenter', () => {
-        clearButton.style.backgroundColor = '#ffcccc';
-    });
+  </div>
+</div>
 
-    clearButton.addEventListener('mouseleave', () => {
-        clearButton.style.backgroundColor = '#ffdddd';
-    });
-}
 
-// הוספת הפעלה בעת טעינת העמוד
-window.addEventListener('load', () => {
-    initSignaturePad('employeeSignatureCanvas', 'clearSignature');
-});
-        
-        window.addEventListener('load', function() {
-    // הגדר תאריך היום כברירת מחדל
-    setTodayAsDefault();
-    
-    // הגדר את טווח התאריכים
-    setupDateRange();
-    
-    // הגדר את אזור החתימה
-    initSignaturePad("employeeSignatureCanvas", "clearSignature");
-    
-    // הפעל את כפתור ההדפסה
-    document.getElementById('printButton').addEventListener('click', function() {
-        // השג את מופע החתימה
-        const signatureCanvas = document.getElementById('employeeSignatureCanvas');
-        
-        // אם יש חתימה, הדפס
-        if (signatureCanvas) {
-            // נסה להמיר את החתימה לתמונה אם יש צורך
-            const signatureDataUrl = signatureCanvas.toDataURL();
-            
-            // הדפס
-            window.print();
-        } else {
-            // אם אין חתימה, הדפס רגיל
-            window.print();
-        }
-    });
-});
-    </script>
+<!-- ════════════════════════════════════════════════════════
+     MODAL: Reject Reason
+════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalReject">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h2>❌ דחיית בקשה</h2>
+      <button class="modal-close" data-close="modalReject">✕</button>
+    </div>
+    <div class="form-group">
+      <label>סיבת הדחייה (תישלח לרכז):</label>
+      <textarea id="rejectReason" rows="4" placeholder="פרט/י את הסיבה לדחייה..."></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button class="btn btn-outline" data-close="modalReject">ביטול</button>
+      <button class="btn btn-danger" id="btnConfirmReject">דחה בקשה</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════ -->
+
+<!-- Firebase SDK (compat mode) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+<!-- App Scripts -->
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script src="email.js"></script>
+<script src="app.js"></script>
+
 </body>
 </html>

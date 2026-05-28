@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ניהול עובדים — טכנודע</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .inactive-row            { opacity: 0.5; background: #fff8f8 !important; }
+    .dept-badge              { background: #e8f0fb; color: #0056b3; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+    #adminError              { display: none; background: #f8d7da; color: #721c24; padding: 14px; border-radius: 8px; margin-bottom: 16px; text-align: center; font-weight: 600; }
+    .admin-bar               { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+    .admin-bar select,
+    .admin-bar input[type=text] { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; }
+    .admin-bar input[type=text] { flex: 1; min-width: 160px; }
+    #workerCount             { font-size: 13px; color: #666; margin-right: auto; }
+  </style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p style="color:#0056b3;font-weight:700;">טוען...</p>
+</div>
+<div id="toast"></div>
+
+<!-- ════ LOGIN ════ -->
+<div class="view active" id="loginView">
+  <div class="login-card">
+    <div class="logo">⚙️</div>
+    <h1>ניהול עובדים — טכנודע</h1>
+    <p>גישה מורשית למנהלים בלבד</p>
+    <div id="adminError">❌ אין לך הרשאת מנהל למערכת זו</div>
+    <button class="btn-google" id="btnAdminLogin">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+      כניסה עם חשבון Google
+    </button>
+  </div>
+</div>
+
+<!-- ════ ADMIN VIEW ════ -->
+<div class="view" id="adminView">
+
+  <div class="topbar">
+    <span class="topbar-brand">⚙️ ניהול עובדים — טכנודע</span>
+    <div class="topbar-user">
+      <span id="adminUserName">—</span>
+      <a href="index.html" style="background:#0056b3;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;text-decoration:none;font-weight:600">🏖️ חזרה למערכת</a>
+      <button class="btn-logout" id="btnAdminLogout">יציאה</button>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">רשימת עובדים</span>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btnAddWorker">➕ הוסף עובד/ת</button>
+          <button class="btn btn-outline" id="btnSeedWorkers" title="ייבא את כל העובדים מקובץ ה-CSV (לא ידרוס קיימים)">📥 ייבא מ-CSV</button>
+        </div>
+      </div>
+
+      <div class="admin-bar">
+        <select id="deptFilter">
+          <option value="">כל המחלקות</option>
+          <option>הנהלה</option>
+          <option>שיווק</option>
+          <option>משרד</option>
+          <option>אחזקה</option>
+          <option>כספים</option>
+          <option>משאבים</option>
+          <option>אקדמי</option>
+        </select>
+        <input type="text" id="searchFilter" placeholder="חיפוש לפי שם או מייל..." />
+        <span id="workerCount"></span>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>שם מלא</th>
+            <th>מחלקה</th>
+            <th>מייל ארגוני</th>
+            <th>Gmail לכניסה</th>
+            <th>תפקיד</th>
+            <th>ממונה מאשר</th>
+            <th>סטטוס</th>
+            <th>פעולות</th>
+          </tr>
+        </thead>
+        <tbody id="workersBody">
+          <tr><td colspan="8"><div class="empty-state"><div class="icon">📭</div><p>טוען עובדים...</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════ MODAL: Add/Edit Worker ════ -->
+<div class="modal-overlay" id="modalWorker">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <h2 id="workerModalTitle">➕ הוסף עובד/ת</h2>
+      <button class="modal-close" id="btnCloseWorkerModal">✕</button>
+    </div>
+
+    <form id="workerForm" onsubmit="return false">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>שם מלא: <span style="color:red">*</span></label>
+          <input type="text" id="workerName" placeholder="שם פרטי ומשפחה" required />
+        </div>
+        <div class="form-group">
+          <label>מחלקה:</label>
+          <select id="workerDept">
+            <option value="">— בחר —</option>
+            <option>הנהלה</option>
+            <option>שיווק</option>
+            <option>משרד</option>
+            <option>אחזקה</option>
+            <option>כספים</option>
+            <option>משאבים</option>
+            <option>אקדמי</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>מייל ארגוני:</label>
+          <input type="email" id="workerWorkEmail" placeholder="name@technoda.org.il" style="direction:ltr;text-align:right" />
+        </div>
+        <div class="form-group">
+          <label>Gmail לכניסה:</label>
+          <input type="email" id="workerAuthEmail" placeholder="name@gmail.com (אופציונלי)" style="direction:ltr;text-align:right" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>ממונה מאשר:</label>
+        <select id="workerManager">
+          <option value="">— ללא ממונה —</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>תפקיד מערכת:</label>
+        <div style="display:flex;gap:24px;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer">
+            <input type="radio" name="workerRole" id="role_coordinator" value="coordinator" checked style="width:auto">
+            📋 רכז/ת
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:normal;cursor:pointer">
+            <input type="radio" name="workerRole" id="role_manager" value="manager" style="width:auto">
+            👔 מנהל/ת
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+          <input type="checkbox" id="workerActive" checked style="width:auto;accent-color:#0056b3">
+          עובד/ת פעיל/ה במערכת
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+        <button type="button" class="btn btn-outline" id="btnCancelWorker">ביטול</button>
+        <button type="button" class="btn btn-primary" id="btnSaveWorker">💾 שמור</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
