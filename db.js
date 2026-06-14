@@ -21,6 +21,12 @@ async function getWorkerByAuthEmail(authEmail) {
   return { id: key, ...val[key] };
 }
 
+function listenToWorker(workerId, callback) {
+  db.ref(`workers/${workerId}`).on('value', snap => {
+    if (snap.exists()) callback({ id: workerId, ...snap.val() });
+  });
+}
+
 async function getAllWorkers() {
   const snap = await db.ref('workers').once('value');
   const val = snap.val();

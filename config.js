@@ -19,6 +19,8 @@ const EMAILJS_PUBLIC_KEY  = "Y0yqKFQQ4ONQ4j396";
 const CALENDAR_GMAIL    = "tech.boker@gmail.com";
 const CALENDAR_APP_PASS = "bwzt zuaa yezl hton";
 
+const SYSTEM_URL = "https://snirsnir.github.io/vacation/";
+
 // Gmail addresses that can access admin.html
 const ADMIN_EMAILS = [
   "gadimador@gmail.com",          // גדי מדור
@@ -29,4 +31,17 @@ const ADMIN_EMAILS = [
   "shulisason@gmail.com",         // שולי ששון
   "snirdoani@gmail.com",          // שניר דואני
   "lironlidi@gmail.com",          // לירון אהרן
+];
+
+// חגים ומועדים — מוחרגים מספירת ימי החופש
+const HOLIDAYS = [
+  { name: 'ראש השנה',           start: '2026-09-11', end: '2026-09-13' },
+  { name: 'יום הכיפורים',        start: '2026-09-20', end: '2026-09-21' },
+  { name: 'בין כיפור לסוכות',   start: '2026-09-22', end: '2026-09-24' },
+  { name: 'סוכות',              start: '2026-09-25', end: '2026-10-03' },
+  { name: 'חנוכה',              start: '2026-12-06', end: '2026-12-12' },
+  { name: 'פורים',              start: '2027-03-23', end: '2027-03-24' },
+  { name: 'פסח',                start: '2027-04-13', end: '2027-04-28' },
+  { name: 'יום העצמאות',        start: '2027-05-12', end: '2027-05-12' },
+  { name: 'שבועות',             start: '2027-06-10', end: '2027-06-11' },
 ];

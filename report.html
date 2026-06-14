@@ -1,0 +1,411 @@
+﻿<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>דוח חופשות — טכנודע</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; direction: rtl; background: #eef2f7; color: #222; }
+
+    /* ── Print bar (hidden when printing) ── */
+    #printBar {
+      position: fixed; top: 0; right: 0; left: 0; z-index: 100;
+      background: #0056b3; color: #fff;
+      padding: 12px 28px;
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,86,0.18);
+    }
+    #printBar span { font-size: 15px; font-weight: 700; }
+    .print-btn {
+      background: #fff; color: #0056b3; border: none;
+      padding: 9px 22px; border-radius: 7px; font-weight: 700;
+      font-size: 14px; cursor: pointer; font-family: inherit;
+    }
+    .print-btn:hover { background: #e8f0fb; }
+    .pdf-btn {
+      background: #1a7f4b; color: #fff; border: none;
+      padding: 9px 22px; border-radius: 7px; font-weight: 700;
+      font-size: 14px; cursor: pointer; font-family: inherit;
+    }
+    .pdf-btn:hover { background: #15693d; }
+
+    .page-wrap { max-width: 680px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    /* ── Report card ── */
+    .report-card {
+      background: #fff; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,86,0.10);
+    }
+    .report-header {
+      background: linear-gradient(135deg, #0056b3 0%, #0077e6 100%);
+      padding: 30px 36px; color: #fff;
+    }
+    .report-header .logo { font-size: 40px; margin-bottom: 8px; }
+    .report-header h1  { font-size: 21px; font-weight: 700; margin-bottom: 4px; }
+    .report-header p   { font-size: 14px; opacity: 0.85; }
+
+    .report-body { padding: 28px 36px; }
+
+    .employee-title {
+      font-size: 20px; font-weight: 700; color: #0056b3;
+      padding-bottom: 12px; margin-bottom: 20px;
+      border-bottom: 2px solid #e8f0fb;
+    }
+
+    .vacation-item {
+      border: 1px solid #e4e8ee; border-radius: 9px;
+      padding: 16px 20px; margin-bottom: 14px;
+      transition: box-shadow .15s;
+    }
+    .vacation-item:last-child { margin-bottom: 0; }
+
+    .vi-dates { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: #1a1a1a; }
+    .vi-days  { font-size: 13px; color: #888; margin-right: 6px; }
+    .vi-meta  { font-size: 13px; color: #555; margin-top: 6px; line-height: 1.6; }
+
+    .vi-info-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6px 20px; margin-top: 10px;
+      background: #f8f9fb; border-radius: 7px;
+      padding: 10px 14px; font-size: 12px; color: #555;
+    }
+    .vi-info-grid .label { font-weight: 700; color: #0056b3; }
+    .vi-activities {
+      font-size: 13px; color: #555; margin-top: 10px;
+      background: #fffbf0; border-right: 3px solid #f0a500;
+      padding: 8px 12px; border-radius: 6px; line-height: 1.6;
+    }
+
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 12px; font-weight: 700; margin-right: 8px; vertical-align: middle;
+    }
+    .badge-approved { background: #e6f4ed; color: #1a7f4b; }
+    .badge-partial  { background: #fef3e2; color: #e67e22; }
+    .badge-rejected { background: #fdecea; color: #c0392b; }
+    .badge-pending  { background: #fef9ec; color: #b7860a; }
+
+    .total-bar {
+      background: #f0f6ff; border-radius: 8px;
+      padding: 12px 18px; margin-top: 22px;
+      font-size: 14px; font-weight: 700; color: #0056b3;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 15px; }
+    .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+
+    .report-footer {
+      background: #f4f6fa; padding: 14px 36px;
+      text-align: center; font-size: 12px; color: #bbb;
+      border-top: 1px solid #eaecef;
+    }
+
+    /* ── Login screen ── */
+    #loginDiv {
+      text-align: center; padding: 80px 20px; max-width: 400px;
+      margin: 60px auto; background: #fff; border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,86,0.10);
+    }
+    #loginDiv .logo { font-size: 52px; margin-bottom: 12px; }
+    #loginDiv h2 { color: #0056b3; font-size: 20px; margin-bottom: 8px; }
+    #loginDiv p  { color: #888; font-size: 14px; margin-bottom: 28px; }
+    .btn-google {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: #fff; border: 2px solid #ddd; border-radius: 8px;
+      padding: 12px 28px; font-size: 15px; cursor: pointer;
+      font-family: inherit; font-weight: 600; color: #333;
+    }
+    .btn-google img { width: 20px; }
+    .btn-google:hover { border-color: #0056b3; background: #f0f6ff; }
+
+    /* ── Loading ── */
+    #loadingDiv { text-align: center; padding: 80px; color: #999; font-size: 16px; }
+    .spinner {
+      width: 36px; height: 36px; border: 4px solid #e0e0e0;
+      border-top-color: #0056b3; border-radius: 50%;
+      animation: spin .7s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Print overrides ── */
+    @media print {
+      body { background: #fff; }
+      #printBar, #loginDiv, #loadingDiv { display: none !important; }
+      .page-wrap { padding: 0; }
+      .report-card { box-shadow: none; border: 1px solid #ddd; border-radius: 0; }
+      .vacation-item { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loadingDiv">
+  <div class="spinner"></div>
+  טוען...
+</div>
+
+<!-- Login screen -->
+<div id="loginDiv" style="display:none">
+  <div class="logo">🏖️</div>
+  <h2>מערכת חופשות טכנודע</h2>
+  <p>יש להתחבר כדי לצפות בדוח</p>
+  <button class="btn-google" id="btnLogin">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+    כניסה עם Google
+  </button>
+</div>
+
+<!-- Print bar -->
+<div id="printBar">
+  <span id="printTitle"></span>
+  <div style="display:flex;gap:10px">
+    <button class="print-btn" onclick="window.print()">הדפסה</button>
+    <button class="pdf-btn" id="btnDownloadPdf">הורד PDF</button>
+  </div>
+</div>
+
+<!-- Report -->
+<div id="reportDiv" style="display:none">
+  <div class="page-wrap" id="pageWrap" style="padding-top:68px">
+    <div class="report-card">
+      <div class="report-header">
+        <div class="logo">🏖️</div>
+        <h1>דוח חופשות חודשי</h1>
+        <p id="reportSubtitle"></p>
+      </div>
+      <div class="report-body" id="reportBody"></div>
+      <div class="report-footer">מערכת חופשות טכנודע &nbsp;|&nbsp; הופק אוטומטית</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="config.js"></script>
+<script>
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth = firebase.auth();
+  const db   = firebase.database();
+
+  const params   = new URLSearchParams(location.search);
+  const uid      = params.get('uid');
+  const monthStr = params.get('month'); // "2026-06"
+
+  const HE_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני',
+                     'יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+  function show(id) { document.getElementById(id).style.display = ''; }
+  function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+  document.getElementById('btnLogin').addEventListener('click', () =>
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+  );
+
+  auth.onAuthStateChanged(user => {
+    hide('loadingDiv');
+    if (!user) { show('loginDiv'); return; }
+    hide('loginDiv');
+    show('reportDiv');
+    loadReport();
+  });
+
+  async function loadReport() {
+    const body = document.getElementById('reportBody');
+
+    if (!uid || !monthStr) {
+      body.innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>קישור לא תקין</p></div>';
+      return;
+    }
+
+    const [year, month] = monthStr.split('-').map(Number);
+    const firstDay = `${monthStr}-01`;
+    const lastDay  = `${monthStr}-${new Date(year, month, 0).toString().padStart ? String(new Date(year, month, 0).getDate()).padStart(2,'0') : new Date(year, month, 0).getDate()}`;
+    const lastDayStr = `${year}-${String(month).padStart(2,'0')}-${String(new Date(year, month, 0).getDate()).padStart(2,'0')}`;
+
+    const monthLabel = `${HE_MONTHS[month - 1]} ${year}`;
+
+    let snap;
+    try {
+      snap = await db.ref('vacationRequests')
+        .orderByChild('userId').equalTo(uid).once('value');
+    } catch (e) {
+      body.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>שגיאה בטעינת הנתונים</p></div>';
+      return;
+    }
+
+    const val = snap.val();
+    const allReqs = val ? Object.values(val) : [];
+
+    // Filter: overlaps with the month
+    const relevant = allReqs.filter(r => {
+      const dates = Array.isArray(r.dates) ? r.dates : Object.values(r.dates || {});
+      return dates.some(d => d.startDate <= lastDayStr && d.endDate >= firstDay);
+    }).sort((a, b) => a.createdAt - b.createdAt);
+
+    const userName = allReqs.length > 0 ? allReqs[0].userName : 'עובד/ת';
+    document.getElementById('reportSubtitle').textContent = `${userName} — ${monthLabel}`;
+    document.getElementById('printTitle').textContent     = `דוח: ${userName} — ${monthLabel}`;
+    document.getElementById('printBar').style.display    = 'flex';
+    document.getElementById('pageWrap').style.paddingTop = '68px';
+
+    if (!relevant.length) {
+      body.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>לא נמצאו חופשות ב${monthLabel}</p></div>`;
+      return;
+    }
+
+    let totalDays = 0;
+    const itemsHtml = relevant.map(r => {
+      const dates = Array.isArray(r.dates) ? r.dates : Object.values(r.dates || {});
+      const monthDates = dates.filter(d => d.startDate <= lastDayStr && d.endDate >= firstDay);
+
+      const datesHtml = monthDates.map(d => {
+        const s    = fmtDate(d.startDate);
+        const e    = fmtDate(d.endDate);
+        const days = countDays(d.startDate, d.endDate);
+        totalDays += days;
+
+        const st = d.status || r.status || 'pending';
+        const badge = st === 'approved' ? `<span class="badge badge-approved">✅ מאושר</span>`
+                    : st === 'rejected' ? `<span class="badge badge-rejected">❌ נדחה</span>`
+                    : st === 'partial'  ? `<span class="badge badge-partial">🔶 חלקי</span>`
+                    :                    `<span class="badge badge-pending">🟡 ממתין</span>`;
+
+        return `<div class="vi-dates">${badge}${s === e ? s : `${s} – ${e}`}<span class="vi-days" dir="ltr">${days} ימי חופש</span></div>`;
+      }).join('');
+
+      const submittedStr = r.createdAt ? fmtDateTimeHE(r.createdAt) : '';
+      const approvedStr  = r.updatedAt ? fmtDateTimeHE(r.updatedAt) : '';
+
+      return `<div class="vacation-item">
+        ${datesHtml}
+        ${r.reason ? `<div class="vi-meta">📌 <strong>סיבה:</strong> ${escHtml(r.reason)}</div>` : ''}
+        <div class="vi-info-grid">
+          <div><span class="label">ממונה מאשר&#x200F;:</span><br>${escHtml(r.managerName || '—')}</div>
+          <div><span class="label">הוגש&#x200F;:</span><br>${submittedStr || '—'}</div>
+          <div><span class="label">סטטוס אישור&#x200F;:</span><br>${fmtStatus(r.status)}</div>
+          <div><span class="label">עודכן&#x200F;:</span><br>${approvedStr || '—'}</div>
+        </div>
+        ${r.activities ? `<div class="vi-activities">📚 <strong>פעילות אקדמית בתקופת ההיעדרות&#x200F;:</strong><br>${escHtml(r.activities)}</div>` : ''}
+        ${r.approvalNote ? `<div class="vi-meta">📝 <strong>הערת הרכז:</strong> ${escHtml(r.approvalNote)}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="employee-title">👤 ${escHtml(userName)}</div>
+      ${itemsHtml}
+      <div class="total-bar">
+        <span>סה"כ ימי חופש ב${monthLabel}:</span>
+        <span style="font-size:20px">${totalDays} ימים</span>
+      </div>`;
+  }
+
+  const HE_DAYS_FULL = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+
+  function fmtDate(str) {
+    if (!str) return '';
+    const [y, m, d] = str.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function fmtDateTimeHE(ts) {
+    if (!ts) return '';
+    const dt  = new Date(Number(ts));
+    const d   = String(dt.getDate()).padStart(2, '0');
+    const m   = String(dt.getMonth() + 1).padStart(2, '0');
+    const y   = dt.getFullYear();
+    const dow = HE_DAYS_FULL[dt.getDay()];
+    // dir="ltr" keeps date-order left-to-right and prevents parenthesis BiDi-mirroring
+    return `<span dir="ltr">${d}/${m}/${y}</span> <span dir="rtl">)${dow}(</span>`;
+  }
+
+  function fmtStatus(status) {
+    return status === 'approved' ? 'מאושר'
+         : status === 'partial'  ? 'מאושר חלקית'
+         : status === 'rejected' ? 'נדחה'
+         : 'ממתין לאישור';
+  }
+
+  function countDays(start, end) {
+    let count = 0;
+    const cur = new Date(start + 'T00:00:00');
+    const fin = new Date(end   + 'T00:00:00');
+    while (cur <= fin) {
+      const dow = cur.getDay();
+      if (dow !== 6 && dow !== 5) count++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+  }
+
+  function escHtml(str) {
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.getElementById('btnDownloadPdf').addEventListener('click', async () => {
+    const wrap     = document.getElementById('pageWrap');
+    const subtitle = document.getElementById('reportSubtitle').textContent || '';
+    const name     = subtitle.split(' — ')[0].trim() || 'דוח';
+
+    const bar = document.getElementById('printBar');
+    bar.style.display = 'none';
+    const origPadding = wrap.style.paddingTop;
+    wrap.style.paddingTop = '0';
+
+    // Wait for DOM to settle
+    await new Promise(r => setTimeout(r, 60));
+
+    const opt = {
+      margin:      [10, 10, 10, 10],
+      filename:    'דוח-חופשות-' + name + '.pdf',
+      image:       { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Fix CSS Grid → table (html2canvas renders grid poorly)
+          const fixStyle = clonedDoc.createElement('style');
+          fixStyle.textContent = `
+            .vi-info-grid {
+              display: table !important; width: 100% !important;
+              border-collapse: separate !important; border-spacing: 8px 4px !important;
+            }
+            .vi-info-grid > div { display: table-cell !important; width: 50% !important; vertical-align: top !important; }
+          `;
+          clonedDoc.head.appendChild(fixStyle);
+
+          // Replace spaces with NBSP in text nodes to fix Hebrew word-spacing in canvas
+          const walker = clonedDoc.createTreeWalker(
+            clonedDoc.getElementById('pageWrap'),
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+          );
+          let node;
+          while ((node = walker.nextNode())) {
+            if (node.textContent.trim()) {
+              node.textContent = node.textContent.replace(/ /g, ' ');
+            }
+          }
+        }
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    await html2pdf().set(opt).from(wrap).save();
+
+    wrap.style.paddingTop = origPadding;
+    bar.style.display = 'flex';
+  });
+</script>
+</body>
+</html>

@@ -10,6 +10,10 @@ let calYear, calMonth;
 let myRequests   = [];
 let allRequests  = [];
 let authLogoutTimer = null;  // debounce למניעת ניתוק מוטעה
+let skipFriday     = true;   // האם לדלג על יום שישי בספירת ימי חופש
+let currentReqDates  = [];   // dates of the request currently open in the detail modal
+let periodActions    = {};   // per-period manager decisions: index → 'approve' | 'reject'
+let periodMessages   = {};   // per-period message texts: index → string
 
 // ── Init ───────────────────────────────────────────────────
 window.addEventListener('load', () => {
@@ -50,6 +54,13 @@ window.addEventListener('load', () => {
 
       await updateWorker(profile.id, { uid: user.uid, photoURL: user.photoURL || '' });
 
+      // Keep currentProfile in sync — so admin changes take effect without re-login
+      listenToWorker(profile.id, updated => {
+        if (currentUser) {
+          currentProfile = { uid: currentUser.uid, authEmail: currentUser.email.toLowerCase(), ...updated };
+        }
+      });
+
       showView('mainView');
       setupMainView();
       showLoading(false);
@@ -83,6 +94,15 @@ window.addEventListener('load', () => {
     firebase.auth().signOut()
   );
 
+  // User dropdown toggle
+  const _trigger  = document.getElementById('userMenuTrigger');
+  const _dropdown = document.getElementById('userDropdown');
+  _trigger.addEventListener('click', e => {
+    e.stopPropagation();
+    _dropdown.classList.toggle('open');
+  });
+  document.addEventListener('click', () => _dropdown.classList.remove('open'));
+
   // Modal close — overlay click or ✕ button
   document.querySelectorAll('[data-close]').forEach(btn =>
     btn.addEventListener('click', () => closeModal(btn.dataset.close))
@@ -93,8 +113,20 @@ window.addEventListener('load', () => {
     })
   );
 
+  // Changelog modal
+  document.getElementById('btnChangelog').addEventListener('click', () => openModal('modalChangelog'));
+
   // New request form submit
   document.getElementById('formNewRequest').addEventListener('submit', handleSubmitRequest);
+
+  // Friday skip checkbox
+  document.getElementById('chkSkipFriday').addEventListener('change', e => {
+    skipFriday = e.target.checked;
+    document.querySelectorAll('#reqDatesContainer .date-range-row').forEach(row => {
+      if (row._pickerRefresh) row._pickerRefresh();
+    });
+    updateDaysCounter();
+  });
 });
 
 // ── Setup Main View ────────────────────────────────────────
@@ -103,16 +135,8 @@ function setupMainView() {
   if (currentUser.photoURL)
     document.getElementById('userAvatar').src = currentUser.photoURL;
 
-  if (currentProfile.isAdmin && !document.getElementById('btnAdmin')) {
-    const a = document.createElement('a');
-    a.id = 'btnAdmin';
-    a.href = 'admin.html';
-    a.target = '_blank';
-    a.textContent = '⚙️ ניהול עובדים';
-    a.style.cssText = 'background:#6c757d;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;text-decoration:none;font-weight:600';
-    const topbarUser = document.querySelector('.topbar-user');
-    topbarUser.insertBefore(a, document.getElementById('btnLogout'));
-  }
+  const hasAdminAccess = currentProfile.isAdmin || ADMIN_EMAILS.includes(currentProfile.authEmail);
+  document.getElementById('adminMenuLink').style.display = hasAdminAccess ? '' : 'none';
 
   if (currentProfile.role === 'manager') setupManagerView();
   else                                    setupCoordinatorView();
@@ -264,15 +288,24 @@ function renderCalendar() {
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow     = new Date(calYear, calMonth, d).getDay();
     const isToday = today.getFullYear()===calYear && today.getMonth()===calMonth && today.getDate()===d;
 
+    const dayHolidays = HOLIDAYS.filter(h => dateStr >= h.start && dateStr <= h.end);
     const events = myRequests.filter(r =>
-      r.dates && r.dates.some(range => dateStr >= range.startDate && dateStr <= range.endDate)
+      normalizeDates(r.dates).some(range => dateStr >= range.startDate && dateStr <= range.endDate)
     );
 
+    let cellClass = 'cal-cell';
+    if (isToday)            cellClass += ' today';
+    if (dow === 6)          cellClass += ' cal-saturday';
+    else if (dow === 5)     cellClass += ' cal-friday';
+    if (dayHolidays.length) cellClass += ' cal-holiday-day';
+
     cells.innerHTML += `
-      <div class="cal-cell${isToday ? ' today' : ''}">
+      <div class="${cellClass}">
         <div class="cal-day-num">${d}</div>
+        ${dayHolidays.map(h => `<div class="cal-event holiday">${escHtml(h.name)}</div>`).join('')}
         ${events.map(r => `
           <div class="cal-event ${r.status}" onclick="openRequestDetail('${r.id}')" title="${escHtml(r.reason||'')}">
             ${r.status === 'approved' ? '✅' : r.status === 'rejected' ? '❌' : '🟡'} חופשה
@@ -299,7 +332,7 @@ function buildApprovalTable() {
       <tr>
         <td>${escHtml(currentProfile.department || 'עובד/ת')}</td>
         <td>${escHtml(currentProfile.managerName)}</td>
-        <td><input type="text" placeholder="הערה" style="width:100%;border:1px solid #ddd;padding:5px;border-radius:4px;font-size:13px" /></td>
+        <td><input type="text" placeholder="כתוב הערה" style="width:100%;border:1px solid #ddd;padding:5px;border-radius:4px;font-size:13px" /></td>
       </tr>`;
   } else {
     tbody.innerHTML = `<tr><td colspan="3" style="color:#888;font-size:13px;padding:8px">אין ממונה מוגדר</td></tr>`;
@@ -308,56 +341,211 @@ function buildApprovalTable() {
 
 function resetDateRows() {
   const container = document.getElementById('reqDatesContainer');
-  // Keep only first row
-  const rows = container.querySelectorAll('.date-range-row');
-  rows.forEach((r, i) => { if (i > 0) r.remove(); });
-  // Clear first row values
+  [...container.querySelectorAll('.date-range-row')].forEach((r, i) => { if (i > 0) r.remove(); });
   const first = container.querySelector('.date-range-row');
   if (first) {
-    first.querySelectorAll('input').forEach(i => { i.value = ''; });
+    first.querySelector('.req-start-date').value = '';
+    first.querySelector('.req-end-date').value   = '';
+    createInlinePicker(first);
   }
   document.getElementById('reqDaysCounter').style.display = 'none';
   setupDateRows();
 }
 
 function setupDateRows() {
-  const container = document.getElementById('reqDatesContainer');
-  const addBtn    = document.getElementById('reqAddDate');
-  const counter   = document.getElementById('reqDaysCounter');
-
-  const updateCounter = () => {
-    let total = 0;
-    container.querySelectorAll('.date-range-row').forEach(row => {
-      const s = row.querySelector('.req-start-date')?.value;
-      const e = row.querySelector('.req-end-date')?.value;
-      if (s && e && e >= s)
-        total += Math.round((new Date(e) - new Date(s)) / 86400000) + 1;
-    });
-    counter.textContent    = total > 0 ? `סה"כ ${total} ימי חופשה` : '';
-    counter.style.display  = total > 0 ? 'block' : 'none';
-  };
-
-  const attachRow = row => {
-    row.querySelectorAll('input[type=date]').forEach(i => i.addEventListener('change', updateCounter));
-    const rmBtn = row.querySelector('.btn-remove-date');
-    if (rmBtn) rmBtn.addEventListener('click', () => { row.remove(); updateCounter(); });
-  };
-
-  attachRow(container.querySelector('.date-range-row'));
-
-  // Reassign addBtn listener (remove old one by cloning)
+  const addBtn = document.getElementById('reqAddDate');
   const newBtn = addBtn.cloneNode(true);
   addBtn.parentNode.replaceChild(newBtn, addBtn);
   newBtn.addEventListener('click', () => {
     const row = document.createElement('div');
-    row.className = 'form-row date-range-row';
+    row.className = 'date-range-row';
     row.innerHTML = `
-      <div class="form-group"><label>מתאריך:</label><input type="date" class="req-start-date" required /></div>
-      <div class="form-group"><label>עד תאריך:</label><input type="date" class="req-end-date" required /></div>
-      <button type="button" class="btn-remove-date">−</button>`;
-    container.appendChild(row);
-    attachRow(row);
+      <input type="hidden" class="req-start-date">
+      <input type="hidden" class="req-end-date">
+      <div class="inline-picker">
+        <div class="picker-nav">
+          <button type="button" class="picker-prev picker-nav-btn">‹</button>
+          <span class="picker-month-title"></span>
+          <button type="button" class="picker-next picker-nav-btn">›</button>
+        </div>
+        <div class="picker-headers picker-grid"></div>
+        <div class="picker-days picker-grid"></div>
+        <div class="picker-label">לחץ על תאריך ההתחלה</div>
+      </div>
+      <button type="button" class="btn-remove-date" style="margin-top:8px">− הסר תקופה זו</button>`;
+    document.getElementById('reqDatesContainer').appendChild(row);
+    createInlinePicker(row);
+    row.querySelector('.btn-remove-date').addEventListener('click', () => { row.remove(); updateDaysCounter(); });
   });
+}
+
+function createInlinePicker(row) {
+  const HE_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const HE_DAYS   = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+
+  const startInput = row.querySelector('.req-start-date');
+  const endInput   = row.querySelector('.req-end-date');
+  const titleEl    = row.querySelector('.picker-month-title');
+  const headersEl  = row.querySelector('.picker-headers');
+  const gridEl     = row.querySelector('.picker-days');
+  const labelEl    = row.querySelector('.picker-label');
+
+  const now = new Date();
+  let cy  = now.getFullYear();
+  let cm  = now.getMonth();
+  let selStart = startInput.value || null;
+  let selEnd   = endInput.value   || null;
+  let hoverISO = null;
+
+  headersEl.innerHTML = HE_DAYS.map(d => `<div class="picker-header-cell">${d}</div>`).join('');
+
+  // Apply range classes to a single cell without rebuilding the grid
+  function applyRangeClass(cell, iso) {
+    cell.classList.remove('sel-start', 'sel-end', 'in-range');
+    const compareEnd = selEnd || hoverISO;
+    if (selStart && compareEnd) {
+      const lo = selStart <= compareEnd ? selStart : compareEnd;
+      const hi = selStart <= compareEnd ? compareEnd : selStart;
+      if (iso === lo)             cell.classList.add('sel-start');
+      if (iso === hi)             cell.classList.add('sel-end');
+      if (iso >= lo && iso <= hi) cell.classList.add('in-range');
+    } else if (selStart && iso === selStart) {
+      cell.classList.add('sel-start');
+    }
+  }
+
+  // Update range classes on all existing cells (no DOM rebuild)
+  function updateRangeClasses() {
+    gridEl.querySelectorAll('.picker-cell[data-iso]').forEach(cell => {
+      applyRangeClass(cell, cell.dataset.iso);
+    });
+  }
+
+  function renderGrid() {
+    titleEl.textContent = `${HE_MONTHS[cm]} ${cy}`;
+    const firstDow    = new Date(cy, cm, 1).getDay();
+    const daysInMonth = new Date(cy, cm + 1, 0).getDate();
+    const todayStr    = dateToISO(new Date());
+
+    gridEl.innerHTML = '';
+    for (let i = 0; i < firstDow; i++) {
+      const e = document.createElement('div');
+      e.className = 'picker-cell empty';
+      gridEl.appendChild(e);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${cy}-${String(cm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dow = new Date(cy, cm, d).getDay();
+      const isDisabled = dow === 6 || isHoliday(iso) || (dow === 5 && skipFriday);
+
+      const cell = document.createElement('div');
+      cell.className   = 'picker-cell';
+      cell.textContent = d;
+      cell.dataset.iso = iso;
+
+      if (isDisabled) {
+        cell.classList.add('disabled');
+      } else {
+        if (dow === 5) cell.classList.add('fri');
+        if (iso === todayStr) cell.classList.add('today');
+        applyRangeClass(cell, iso);
+      }
+      gridEl.appendChild(cell);
+    }
+  }
+
+  function updateLabel() {
+    if (selStart && selEnd) {
+      const todayISO = dateToISO(new Date());
+      const days     = countWorkingDays(selStart, selEnd);
+      if (selStart < todayISO) {
+        const pastEnd  = selEnd < todayISO ? selEnd : todayISO;
+        const pastDays = countWorkingDays(selStart, pastEnd);
+        labelEl.textContent = `${formatDateHE(selStart)} – ${formatDateHE(selEnd)}  (${days} ימי חופש, ${pastDays} בדיעבד)`;
+        labelEl.className   = 'picker-label past-range';
+      } else {
+        labelEl.textContent = `${formatDateHE(selStart)} – ${formatDateHE(selEnd)}  (${days} ימי חופש)`;
+        labelEl.className   = 'picker-label has-range';
+      }
+    } else if (selStart) {
+      labelEl.textContent = 'כעת בחר את תאריך הסיום...';
+      labelEl.className   = 'picker-label selecting';
+    } else {
+      labelEl.textContent = 'לחץ על תאריך ההתחלה';
+      labelEl.className   = 'picker-label';
+    }
+  }
+
+  // Event delegation on gridEl — avoids per-cell listeners and the destroyed-node click bug
+  gridEl.addEventListener('mousemove', e => {
+    if (!selStart || selEnd) return;
+    const cell = e.target.closest('.picker-cell[data-iso]');
+    if (!cell || cell.classList.contains('disabled')) return;
+    const iso = cell.dataset.iso;
+    if (iso !== hoverISO) {
+      hoverISO = iso;
+      updateRangeClasses();
+    }
+  });
+
+  gridEl.addEventListener('mouseleave', () => {
+    if (selStart && !selEnd && hoverISO) {
+      hoverISO = null;
+      updateRangeClasses();
+    }
+  });
+
+  gridEl.addEventListener('click', e => {
+    const cell = e.target.closest('.picker-cell[data-iso]');
+    if (!cell || cell.classList.contains('disabled')) return;
+    const iso = cell.dataset.iso;
+
+    if (!selStart || selEnd) {
+      selStart = iso; selEnd = null; hoverISO = null;
+    } else {
+      if (iso === selStart) return;
+      const newStart = iso < selStart ? iso    : selStart;
+      const newEnd   = iso < selStart ? selStart : iso;
+
+      // Check for overlap with every other row's confirmed range
+      const overlap = [...document.querySelectorAll('#reqDatesContainer .date-range-row')]
+        .filter(r => r !== row)
+        .some(r => {
+          const s = r.querySelector('.req-start-date')?.value;
+          const en = r.querySelector('.req-end-date')?.value;
+          return s && en && newStart <= en && s <= newEnd;
+        });
+
+      if (overlap) {
+        showToast('⚠️ ימים חופפים — נא בחרו ימים לא חופפים', 'error');
+        selStart = null; selEnd = null; hoverISO = null;
+        startInput.value = ''; endInput.value = '';
+        updateLabel(); updateDaysCounter(); updateRangeClasses();
+        return;
+      }
+
+
+      selStart = newStart; selEnd = newEnd; hoverISO = null;
+    }
+    startInput.value = selStart || '';
+    endInput.value   = selEnd   || '';
+    updateLabel();
+    updateDaysCounter();
+    updateRangeClasses();
+  });
+
+  row.querySelector('.picker-prev').addEventListener('click', () => {
+    if (--cm < 0) { cm = 11; cy--; } renderGrid();
+  });
+  row.querySelector('.picker-next').addEventListener('click', () => {
+    if (++cm > 11) { cm = 0; cy++; } renderGrid();
+  });
+
+  row._pickerRefresh = () => { renderGrid(); updateLabel(); };
+
+  updateLabel();
+  renderGrid();
 }
 
 // ── Submit ─────────────────────────────────────────────────
@@ -382,6 +570,7 @@ async function handleSubmitRequest(e) {
       managerWorkEmail: isManager ? (p.managerWorkEmail || null) : p.managerWorkEmail,
       reason:           document.getElementById('reqReason').value.trim(),
       activities:       document.getElementById('reqActivities').value.trim(),
+      approvalNote:     document.querySelector('#reqApprovalBody input[type="text"]')?.value.trim() || '',
       dates,
       status:           'pending',
       createdAt:        Date.now(),
@@ -423,42 +612,83 @@ async function openRequestDetail(requestId) {
   const req = await getRequest(requestId);
   if (!req) { showLoading(false); return; }
 
+  const isManager = currentProfile.role === 'manager';
+  const isPending = req.status === 'pending';
+  const isPartial = req.status === 'partial';
+  const reqDates  = normalizeDates(req.dates);
+
   document.getElementById('detailTitle').textContent = `בקשת חופש — ${req.userName}`;
+
+  // Build dates display — show per-range status when multiple ranges exist
+  const datesHtml = reqDates.length > 1
+    ? reqDates.map(d => {
+        const s = d.status || 'pending';
+        const icon = s === 'approved' ? '✅' : s === 'rejected' ? '❌' : '🟡';
+        const range = d.startDate === d.endDate
+          ? formatDateHE(d.startDate)
+          : `${formatDateHE(d.startDate)}–${formatDateHE(d.endDate)}`;
+        return `${icon} ${range} (${countWorkingDays(d.startDate, d.endDate)} ימים)`;
+      }).join('<br>')
+    : `${formatDates(req.dates)} (${calcTotalDays(req.dates)} ימים)`;
+
   document.getElementById('detailInfo').innerHTML = `
     <strong>שם:</strong> ${escHtml(req.userName)}<br>
-    <strong>תאריכים:</strong> ${formatDates(req.dates)} (${calcTotalDays(req.dates)} ימים)<br>
+    <strong>תאריכים:</strong><br style="display:${reqDates.length > 1 ? 'inline' : 'none'}">${datesHtml}<br>
     <strong>סיבה:</strong> ${escHtml(req.reason || '—')}<br>
     ${req.activities ? `<strong>פעילות:</strong> ${escHtml(req.activities)}<br>` : ''}
+    ${req.approvalNote ? `<strong>הערת הרכז:</strong> ${escHtml(req.approvalNote)}<br>` : ''}
     <strong>הוגש ב:</strong> ${new Date(req.createdAt).toLocaleDateString('he-IL')}
   `;
   document.getElementById('detailStatusWrap').innerHTML = statusBadge(req.status);
 
-  const isManager = currentProfile.role === 'manager';
-  const isPending = req.status === 'pending';
+  // Period display: manager gets interactive per-row buttons; coordinator gets read-only status
+  const partialSec   = document.getElementById('partialApprovalSection');
+  const partialTitle = document.getElementById('partialSectionTitle');
+  periodActions  = {};
+  periodMessages = {};
+  if (isManager && (isPending || isPartial)) {
+    partialSec.style.display = 'block';
+    partialTitle.textContent = '✔ בחר פעולה לכל תקופה:';
+    buildDateRangeCheckboxes(reqDates, false);
+  } else if (!isManager) {
+    partialSec.style.display = 'block';
+    partialTitle.textContent = '📋 סטטוס התקופות:';
+    buildDateRangeCheckboxes(reqDates, true);
+  } else {
+    partialSec.style.display = 'none';
+  }
 
-  // Manager action buttons
+  // Manager action bar (שגר button)
   const actDiv = document.getElementById('managerActions');
-  actDiv.style.display = isManager ? 'flex' : 'none';
-  document.getElementById('btnApprove').style.display = isPending && isManager ? '' : 'none';
-  document.getElementById('btnReject').style.display  = isPending && isManager ? '' : 'none';
-  document.getElementById('btnSendMsg').style.display = isManager ? '' : 'none';
+  actDiv.style.display = (isManager && (isPending || isPartial)) ? 'block' : 'none';
+  document.getElementById('btnShagar').style.display = 'none';
+  document.getElementById('managerMsgBox').style.display = 'none';
+  if (isManager && (isPending || isPartial)) {
+    document.getElementById('btnShagar').onclick = () => executeManagerAction(req);
+  }
+  updateShagarButton();
 
-  // User reply box (coordinator can reply when pending)
-  document.getElementById('replyBox').style.display     = (!isManager && isPending) ? 'block' : 'none';
+  // Coordinator reply / appeal box
+  const replyBox = document.getElementById('replyBox');
+  replyBox.style.display = (!isManager && (isPending || isPartial)) ? 'block' : 'none';
+  const replyBtn = document.getElementById('btnSendReply');
+  if (!isManager && isPartial) {
+    document.getElementById('replyText').placeholder = 'כתוב את הערעור שלך על ההחלטה החלקית...';
+    replyBtn.textContent = '⚖️ שלח ערעור';
+  } else {
+    document.getElementById('replyText').placeholder = 'כתוב תגובה...';
+    replyBtn.textContent = 'שלח תגובה';
+  }
   document.getElementById('managerMsgBox').style.display = 'none';
 
-  // Render messages
-  renderMessages(req.messages ? Object.values(req.messages) : []);
+  // Real-time message listener — detach previous before attaching new
+  db.ref(`vacationRequests/${currentRequestId}/messages`).off();
+  listenToMessages(currentRequestId, msgs => renderMessages(msgs));
 
   // Wire buttons
-  document.getElementById('btnApprove').onclick   = () => approveRequest(req);
-  document.getElementById('btnReject').onclick    = () => openRejectModal(req);
-  document.getElementById('btnSendMsg').onclick   = () => {
-    const box = document.getElementById('managerMsgBox');
-    box.style.display = box.style.display === 'none' ? 'block' : 'none';
-  };
-  document.getElementById('btnSendManagerMsg').onclick = () => sendManagerMessage(req);
-  document.getElementById('btnSendReply').onclick      = () => sendUserReply(req);
+  document.getElementById('btnPrint').onclick           = () => printRequest(req);
+  document.getElementById('btnSendManagerMsg').onclick  = () => sendManagerMessage(req);
+  document.getElementById('btnSendReply').onclick       = () => sendUserReply(req);
 
   openModal('modalRequestDetail');
   showLoading(false);
@@ -482,11 +712,34 @@ function renderMessages(messages) {
   thread.scrollTop = thread.scrollHeight;
 }
 
+// ── Save textarea messages attached to period rows ──────────
+async function saveRangeMessages(reqId, indices, dates) {
+  for (const i of indices) {
+    const input = document.querySelector(`#dateRangeCheckboxes input[data-msg-idx="${i}"]`);
+    const msg   = input?.value?.trim();
+    if (!msg) continue;
+    const d     = dates[i];
+    const label = d.startDate === d.endDate
+      ? formatDateHE(d.startDate)
+      : `${formatDateHE(d.startDate)} – ${formatDateHE(d.endDate)}`;
+    const text  = dates.length > 1 ? `[${label}] ${msg}` : msg;
+    await addMessage(reqId, {
+      from: 'manager', senderName: currentProfile.name,
+      text, timestamp: Date.now()
+    });
+  }
+}
+
 // ── Approve ────────────────────────────────────────────────
 async function approveRequest(req) {
   showLoading(true);
   try {
+    const dates   = normalizeDates(req.dates);
+    const indices = [...document.querySelectorAll('#dateRangeCheckboxes input[type="checkbox"]:not([disabled])')]
+      .map(cb => parseInt(cb.dataset.idx));
+
     await updateRequest(req.id, { status: 'approved', updatedAt: Date.now() });
+    await saveRangeMessages(req.id, indices.length ? indices : dates.map((_, i) => i), dates);
     await notifyUserApproved({ ...req, status: 'approved' });
     closeModal('modalRequestDetail');
     showToast('✅ הבקשה אושרה!', 'success');
@@ -494,7 +747,7 @@ async function approveRequest(req) {
     console.error('approveRequest error:', err);
     showToast('שגיאה באישור הבקשה: ' + err.message, 'error');
   } finally {
-    showLoading(false); // תמיד מסתיר את ה-loader
+    showLoading(false);
   }
 }
 
@@ -665,6 +918,128 @@ async function loadAnnouncementsForUser() {
 }
 
 // ════════════════════════════════════════════════════════════
+//  PRINT
+// ════════════════════════════════════════════════════════════
+function printRequest(req) {
+  const dates   = formatDates(normalizeDates(req.dates));
+  const days    = calcTotalDays(req.dates);
+  const created = new Date(req.createdAt).toLocaleDateString('he-IL');
+
+  const statusLabel = { pending: 'ממתין לאישור', approved: 'מאושר', rejected: 'נדחה' }[req.status] || req.status;
+  const statusColor = { pending: '#e67e22',        approved: '#1a7f4b', rejected: '#c0392b' }[req.status] || '#444';
+  const statusBg    = { pending: '#fef3e2',        approved: '#e6f4ed', rejected: '#fdecea' }[req.status] || '#f5f5f5';
+
+  const html = `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>טופס בקשת חופש — ${escHtml(req.userName)}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;direction:rtl;color:#222;background:#fff;padding:40px;font-size:14px}
+    .header{text-align:center;border-bottom:3px solid #0056b3;padding-bottom:18px;margin-bottom:28px}
+    .logo{font-size:38px;margin-bottom:6px}
+    h1{color:#0056b3;font-size:22px;margin-bottom:4px}
+    .subtitle{color:#666;font-size:12px}
+    .section{margin-bottom:22px}
+    .section-title{font-size:13px;font-weight:700;color:#0056b3;border-bottom:1px solid #dee2e6;padding-bottom:5px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+    .row{display:flex;gap:16px;margin-bottom:10px}
+    .field{flex:1}
+    .field label{font-size:11px;color:#666;font-weight:700;display:block;margin-bottom:3px}
+    .value{border:1px solid #ccc;border-radius:4px;padding:8px 10px;min-height:36px;background:#fafafa;font-size:14px;line-height:1.5}
+    .value.tall{min-height:60px}
+    .days-value{text-align:center;font-size:22px;font-weight:700;color:#0056b3}
+    .status-badge{display:inline-block;padding:6px 18px;border-radius:20px;font-weight:700;font-size:14px}
+    .signatures{display:flex;gap:32px;margin-top:48px}
+    .sig-box{flex:1;border-top:2px solid #333;padding-top:8px;text-align:center;font-size:12px;color:#555}
+    .footer{text-align:center;margin-top:32px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:10px}
+    @media print{body{padding:20px}@page{margin:1.5cm}}
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">🏖️</div>
+    <h1>טופס בקשת חופש</h1>
+    <div class="subtitle">מערכת חופשות טכנודע &nbsp;|&nbsp; הוגש ב-${created}</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">פרטי העובד/ת</div>
+    <div class="row">
+      <div class="field">
+        <label>שם מלא</label>
+        <div class="value">${escHtml(req.userName)}</div>
+      </div>
+      <div class="field">
+        <label>מייל ארגוני</label>
+        <div class="value">${escHtml(req.userWorkEmail || '—')}</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>ממונה מאשר/ת</label>
+        <div class="value">${escHtml(req.managerName || '—')}</div>
+      </div>
+      <div class="field">
+        <label>תאריך הגשה</label>
+        <div class="value">${created}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">פרטי החופשה</div>
+    <div class="row">
+      <div class="field">
+        <label>תאריכי חופשה</label>
+        <div class="value">${dates}</div>
+      </div>
+      <div class="field" style="max-width:110px">
+        <label>סה"כ ימים</label>
+        <div class="value days-value">${days}</div>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label>סיבת הבקשה</label>
+      <div class="value tall">${escHtml(req.reason || '—')}</div>
+    </div>
+    ${req.activities ? `
+    <div class="field">
+      <label>פעילות אקדמית בתקופת ההיעדרות</label>
+      <div class="value tall">${escHtml(req.activities)}</div>
+    </div>` : ''}
+  </div>
+
+  <div class="section">
+    <div class="section-title">סטטוס הבקשה</div>
+    <span class="status-badge" style="background:${statusBg};color:${statusColor}">${statusLabel}</span>
+    ${req.rejectReason ? `<p style="margin-top:10px;font-size:13px;color:#c0392b">סיבת הדחייה: ${escHtml(req.rejectReason)}</p>` : ''}
+  </div>
+
+  <div class="signatures">
+    <div class="sig-box">חתימת העובד/ת</div>
+    <div class="sig-box">חתימת הממונה</div>
+    <div class="sig-box">תאריך אישור</div>
+  </div>
+
+  <div class="footer">מערכת חופשות טכנודע &nbsp;|&nbsp; הופק אוטומטית</div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.addEventListener('afterprint', function() { window.close(); });
+    };
+  <\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+// ════════════════════════════════════════════════════════════
 //  HELPERS
 // ════════════════════════════════════════════════════════════
 // Firebase שומר מערכים כ-object {0:{...},1:{...}} — נרמול חובה לפני שימוש
@@ -674,18 +1049,235 @@ function normalizeDates(dates) {
   return Object.values(dates);
 }
 
+function dateToISO(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function isHoliday(dateStr) {
+  return HOLIDAYS.some(h => dateStr >= h.start && dateStr <= h.end);
+}
+
+function countWorkingDays(startStr, endStr) {
+  let count = 0;
+  const cur = new Date(startStr + 'T00:00:00');
+  const end = new Date(endStr   + 'T00:00:00');
+  while (cur <= end) {
+    const dow = cur.getDay();
+    if (dow !== 6 && !(skipFriday && dow === 5) && !isHoliday(dateToISO(cur))) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+}
+
+function updateDaysCounter() {
+  const container = document.getElementById('reqDatesContainer');
+  const counter   = document.getElementById('reqDaysCounter');
+  if (!container || !counter) return;
+  let total = 0;
+  container.querySelectorAll('.date-range-row').forEach(row => {
+    const s = row.querySelector('.req-start-date')?.value;
+    const e = row.querySelector('.req-end-date')?.value;
+    if (s && e && e >= s) total += countWorkingDays(s, e);
+  });
+  counter.textContent   = total > 0 ? `סה"כ ${total} ימי חופשה` : '';
+  counter.style.display = total > 0 ? 'block' : 'none';
+}
+
 function statusBadge(status) {
   return {
     pending:  `<span class="badge badge-pending">🟡 ממתין לאישור</span>`,
     approved: `<span class="badge badge-approved">🟢 מאושר</span>`,
-    rejected: `<span class="badge badge-rejected">🔴 נדחה</span>`
+    rejected: `<span class="badge badge-rejected">🔴 נדחה</span>`,
+    partial:  `<span class="badge badge-partial">🔶 אושר חלקית</span>`
   }[status] || `<span class="badge">${status}</span>`;
+}
+
+function updateShagarButton() {
+  const btn = document.getElementById('btnShagar');
+  if (!btn) return;
+  const hasAction = Object.values(periodActions).some(a => a === 'approve' || a === 'reject');
+  btn.style.display = hasAction ? 'block' : 'none';
+}
+
+function setPeriodAction(idx, action) {
+  if (action === null) delete periodActions[idx];
+  else                 periodActions[idx] = action;
+  buildDateRangeCheckboxes(currentReqDates, false);
+  updateShagarButton();
+}
+
+function savePeriodMessage(idx, value) {
+  periodMessages[idx] = value;
+}
+
+function executeManagerAction(req) {
+  const toApprove = Object.entries(periodActions).filter(([,a]) => a === 'approve').map(([i]) => parseInt(i));
+  const toReject  = Object.entries(periodActions).filter(([,a]) => a === 'reject').map(([i]) => parseInt(i));
+  if (!toApprove.length && !toReject.length) return;
+  submitMixedActions(req, toApprove, toReject);
+}
+
+async function submitMixedActions(req, toApprove, toReject) {
+  showLoading(true);
+  try {
+    const dates        = normalizeDates(req.dates);
+    const updatedDates = dates.map((d, i) => {
+      const note = (periodMessages[i] || '').trim();
+      if (toApprove.includes(i)) return { ...d, status: 'approved', ...(note ? { managerNote: note } : {}) };
+      if (toReject.includes(i))  return { ...d, status: 'rejected', ...(note ? { managerNote: note } : {}) };
+      return d;
+    });
+
+    const statuses  = updatedDates.map(d => d.status || 'pending');
+    const newStatus = statuses.every(s => s === 'approved') ? 'approved'
+                    : statuses.every(s => s === 'rejected') ? 'rejected'
+                    : 'partial';
+
+    // Combine rejected periods' notes as the request-level rejectReason
+    const rejectNote = toReject.map(i => (periodMessages[i] || '').trim()).filter(Boolean).join(' | ');
+
+    const updates = { dates: updatedDates, status: newStatus, updatedAt: Date.now() };
+    if (rejectNote) updates.rejectReason = rejectNote;
+    await updateRequest(req.id, updates);
+
+    // Save per-period messages to the thread
+    for (const i of [...toApprove, ...toReject]) {
+      const msg = (periodMessages[i] || '').trim();
+      if (!msg) continue;
+      const d = updatedDates[i];
+      const rangeLabel = d.startDate === d.endDate ? formatDateHE(d.startDate) : `${formatDateHE(d.startDate)} – ${formatDateHE(d.endDate)}`;
+      const text = dates.length > 1 ? `[${rangeLabel}] ${msg}` : msg;
+      await addMessage(req.id, { from: 'manager', senderName: currentProfile.name, text, timestamp: Date.now() });
+    }
+
+    if (toApprove.length) await notifyUserApproved({ ...req, dates: updatedDates, status: newStatus });
+    if (toReject.length)  await notifyUserRejected(req, rejectNote);
+
+    closeModal('modalRequestDetail');
+    showToast(
+      newStatus === 'approved' ? '✅ הבקשה אושרה!' :
+      newStatus === 'rejected' ? 'הבקשה נדחתה' : '🔶 טופל חלקית',
+      'success'
+    );
+  } catch (err) {
+    console.error(err);
+    showToast('שגיאה בעדכון הבקשה', 'error');
+  }
+  showLoading(false);
+}
+
+function buildDateRangeCheckboxes(dates, readOnly = false) {
+  currentReqDates = dates;
+  const container  = document.getElementById('dateRangeCheckboxes');
+  const cancelBtn  = `style="border:none;background:#f0f0f0;color:#555;cursor:pointer;font-size:12px;padding:3px 8px;border-radius:4px;font-family:inherit;flex-shrink:0"`;
+  const approveBtn = `style="border:2px solid #1a7f4b;color:#1a7f4b;background:#fff;font-weight:700;padding:4px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;flex-shrink:0"`;
+  const rejectBtn  = `style="border:2px solid #c0392b;color:#c0392b;background:#fff;font-weight:700;padding:4px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;flex-shrink:0"`;
+  const msgStyle   = `style="flex:1;min-width:80px;border:1px solid #ddd;border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit;color:#333"`;
+
+  container.innerHTML = dates.map((d, i) => {
+    const s          = d.status || 'pending';
+    const dbApproved = s === 'approved';
+    const dbRejected = s === 'rejected';
+    const range = d.startDate === d.endDate
+      ? formatDateHE(d.startDate)
+      : `${formatDateHE(d.startDate)} – ${formatDateHE(d.endDate)}`;
+    const days  = countWorkingDays(d.startDate, d.endDate);
+    const label = `<span style="font-size:13px;white-space:nowrap;flex-shrink:0">${range} <span style="color:#888">(${days} ימים)</span></span>`;
+
+    if (readOnly) {
+      const [bc, bg, badge] = dbApproved
+        ? ['#1a7f4b', '#e6f4ed', '<span style="color:#1a7f4b;font-size:12px;font-weight:700;flex-shrink:0">✅ מאושר</span>']
+        : dbRejected
+          ? ['#c0392b', '#fdecea', '<span style="color:#c0392b;font-size:12px;font-weight:700;flex-shrink:0">❌ נדחה</span>']
+          : ['#dee2e6', '#fff',    '<span style="color:#e67e22;font-size:12px;font-weight:700;flex-shrink:0">🟡 ממתין</span>'];
+      const noteHtml = d.managerNote
+        ? `<span style="flex:1;font-size:12px;color:#555;font-style:italic">"${escHtml(d.managerNote)}"</span>`
+        : '<span style="flex:1"></span>';
+      return `<div style="border:1px solid ${bc};border-radius:6px;padding:9px 12px;background:${bg};display:flex;align-items:center;gap:10px;">${label}${noteHtml}${badge}</div>`;
+    }
+
+    // Manager interactive mode — message input persists via periodMessages
+    const action  = periodActions[i];
+    const msgVal  = escHtml(periodMessages[i] || '');
+    const msgInput = `<input type="text" value="${msgVal}" oninput="savePeriodMessage(${i},this.value)" placeholder="צרף הודעה" ${msgStyle}>`;
+
+    if (dbApproved) {
+      return `<div style="border:1px solid #1a7f4b;border-radius:6px;padding:9px 12px;background:#e6f4ed;display:flex;align-items:center;gap:10px;">${label}<span style="color:#1a7f4b;font-size:12px;font-weight:700;margin-right:auto">✅ מאושר</span></div>`;
+    }
+    if (action === 'approve') {
+      return `<div style="border:1px solid #1a7f4b;border-radius:6px;padding:9px 12px;background:#e6f4ed;display:flex;align-items:center;gap:10px;">${label}${msgInput}<span style="color:#1a7f4b;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0">✅ מאושר</span><button onclick="setPeriodAction(${i},null)" ${cancelBtn}>✕ בטל</button></div>`;
+    }
+    if (action === 'reject') {
+      return `<div style="border:1px solid #c0392b;border-radius:6px;padding:9px 12px;background:#fdecea;display:flex;align-items:center;gap:10px;">${label}${msgInput}<span style="color:#c0392b;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0">❌ נדחה</span><button onclick="setPeriodAction(${i},null)" ${cancelBtn}>✕ בטל</button></div>`;
+    }
+    // No action yet
+    return `<div style="border:1px solid #dee2e6;border-radius:6px;padding:9px 12px;background:#fff;display:flex;align-items:center;gap:10px;">${label}${msgInput}<div style="display:flex;gap:6px;flex-shrink:0;"><button onclick="setPeriodAction(${i},'approve')" ${approveBtn}>✅ אשר</button><button onclick="setPeriodAction(${i},'reject')" ${rejectBtn}>❌ דחה</button></div></div>`;
+  }).join('');
+}
+
+async function partialApprove(req) {
+  const unchecked = [...document.querySelectorAll('#dateRangeCheckboxes input[type="checkbox"]:not([disabled])')];
+  const selected  = unchecked.filter(cb => cb.checked).map(cb => parseInt(cb.dataset.idx));
+  if (!selected.length) { showToast('יש לבחור לפחות תקופה אחת', 'error'); return; }
+
+  showLoading(true);
+  try {
+    const dates        = normalizeDates(req.dates);
+    const updatedDates = dates.map((d, i) => ({
+      ...d,
+      status: selected.includes(i) ? 'approved' : (d.status || 'pending')
+    }));
+
+    const allApproved  = updatedDates.every(d => d.status === 'approved');
+    const newStatus    = allApproved ? 'approved' : 'partial';
+
+    await updateRequest(req.id, { dates: updatedDates, status: newStatus, updatedAt: Date.now() });
+
+    // זימון רק לתקופות שנבחרו עכשיו (לא כאלה שכבר היו מאושרות)
+    const prevApproved = new Set(dates.map((d, i) => d.status === 'approved' ? i : -1));
+    const attendees    = [
+      { name: req.userName,    email: req.userWorkEmail    },
+      { name: req.managerName, email: req.managerWorkEmail }
+    ].filter(a => a.email);
+
+    for (const i of selected) {
+      if (prevApproved.has(i)) continue; // כבר נשלח זימון
+      const range = updatedDates[i];
+      await sendCalendarInvite({
+        toEmails:    attendees,
+        summary:     `חופשה — ${req.userName}`,
+        description: `חופשה מאושרת\nסיבה: ${req.reason || ''}`,
+        startDate:   range.startDate,
+        endDate:     range.endDate
+      });
+    }
+
+    // מייל לרכז
+    const newlyApproved = selected.map(i => updatedDates[i]).filter((_, i) => !prevApproved.has(selected[i]));
+    if (newStatus === 'approved') {
+      await notifyUserApproved({ ...req, dates: updatedDates, status: 'approved' });
+    } else {
+      await notifyUserPartialApproval({ ...req, approvedDates: newlyApproved });
+    }
+
+    await saveRangeMessages(req.id, selected, normalizeDates(req.dates));
+
+    closeModal('modalRequestDetail');
+    showToast(newStatus === 'approved' ? '✅ הבקשה אושרה!' : '🔶 אושר חלקית', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('שגיאה באישור', 'error');
+  }
+  showLoading(false);
 }
 
 function calcTotalDays(dates) {
   return normalizeDates(dates).reduce((sum, d) => {
     if (!d.startDate || !d.endDate || d.endDate < d.startDate) return sum;
-    return sum + Math.round((new Date(d.endDate) - new Date(d.startDate)) / 86400000) + 1;
+    return sum + countWorkingDays(d.startDate, d.endDate);
   }, 0);
 }
 

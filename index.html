@@ -43,9 +43,18 @@
   <div class="topbar">
     <span class="topbar-brand">🏖️ מערכת חופשות טכנודע</span>
     <div class="topbar-user">
-      <img id="userAvatar" src="" alt="" onerror="this.style.display='none'" />
-      <span id="userName">—</span>
-      <button class="btn-logout" id="btnLogout">יציאה</button>
+      <button class="version-badge" id="btnChangelog">v1.2</button>
+      <div class="user-menu-wrap" id="userMenuWrap">
+        <button class="user-menu-trigger" id="userMenuTrigger">
+          <img id="userAvatar" src="" alt="" onerror="this.style.display='none'" />
+          <span id="userName">—</span>
+          <span class="menu-chevron">▾</span>
+        </button>
+        <div class="user-dropdown" id="userDropdown">
+          <a href="admin.html" class="dropdown-item" id="adminMenuLink" target="_blank" style="display:none">⚙️ מערכת ניהול</a>
+          <button class="dropdown-item" id="btnLogout">🚪 יציאה</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -94,9 +103,9 @@
         <!-- Calendar View -->
         <div id="calendarView" style="display:none">
           <div class="calendar-nav">
-            <button id="calPrev">›</button>
+            <button id="calPrev">‹</button>
             <h3 id="calMonthTitle"></h3>
-            <button id="calNext">‹</button>
+            <button id="calNext">›</button>
           </div>
           <div class="calendar-grid" id="calHeaders"></div>
           <div class="calendar-grid" id="calCells"></div>
@@ -198,15 +207,26 @@
       <!-- Date Ranges -->
       <div class="form-group">
         <label>מועדי החופשה: <span style="color:red">*</span></label>
+        <div style="margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="chkSkipFriday" checked style="width:auto;accent-color:#0056b3">
+            אני לא עובד/ת בימי שישי בטכנודע
+          </label>
+          <div style="font-size:12px;color:#888;margin-top:3px">שבת תמיד מוחרגת מספירת ימי החופש. חגי ישראל מוחרגים אוטומטית.</div>
+        </div>
         <div id="reqDatesContainer">
-          <div class="form-row date-range-row">
-            <div class="form-group">
-              <label>מתאריך:</label>
-              <input type="date" class="req-start-date" required />
-            </div>
-            <div class="form-group">
-              <label>עד תאריך:</label>
-              <input type="date" class="req-end-date" required />
+          <div class="date-range-row">
+            <input type="hidden" class="req-start-date">
+            <input type="hidden" class="req-end-date">
+            <div class="inline-picker">
+              <div class="picker-nav">
+                <button type="button" class="picker-prev picker-nav-btn">‹</button>
+                <span class="picker-month-title"></span>
+                <button type="button" class="picker-next picker-nav-btn">›</button>
+              </div>
+              <div class="picker-headers picker-grid"></div>
+              <div class="picker-days picker-grid"></div>
+              <div class="picker-label">לחץ על תאריך ההתחלה</div>
             </div>
           </div>
         </div>
@@ -227,7 +247,7 @@
             <tr>
               <th>תפקיד</th>
               <th>ממונה</th>
-              <th>הערה</th>
+              <th>הערות</th>
             </tr>
           </thead>
           <tbody id="reqApprovalBody"></tbody>
@@ -253,17 +273,27 @@
       <button class="modal-close" data-close="modalRequestDetail">✕</button>
     </div>
 
+    <!-- Print Button — floating, below ✕ -->
+    <button class="btn btn-sm" id="btnPrint"
+      style="position:absolute;top:98px;left:32px;background:#f59e0b;color:#1a1a1a;border:none;font-weight:700;z-index:1">
+      🖨️ הדפס
+    </button>
+
     <!-- Request Info -->
     <div id="detailInfo" style="margin-bottom:16px;font-size:14px;line-height:1.8;background:#f8f9fa;padding:14px;border-radius:8px;"></div>
 
     <!-- Status Badge -->
     <div style="margin-bottom:16px;" id="detailStatusWrap"></div>
 
-    <!-- Manager Action Buttons (shown only to manager) -->
-    <div id="managerActions" style="display:none;gap:8px;margin-bottom:16px;">
-      <button class="btn btn-success btn-sm" id="btnApprove">✅ אשר</button>
-      <button class="btn btn-danger btn-sm" id="btnReject">❌ דחה</button>
-      <button class="btn btn-outline btn-sm" id="btnSendMsg">💬 שלח הודעה</button>
+    <!-- Partial Approval Section (manager + multi-range) -->
+    <div id="partialApprovalSection" style="display:none;margin-bottom:16px;border:1px solid #dee2e6;border-radius:8px;padding:14px;background:#f8f9fa">
+      <div id="partialSectionTitle" style="font-size:13px;font-weight:700;color:#0056b3;margin-bottom:10px">✔ בחר את התקופות לאישור:</div>
+      <div id="dateRangeCheckboxes" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- Manager Action Bar -->
+    <div id="managerActions" style="display:none;margin-bottom:16px;">
+      <button id="btnShagar" style="display:none;width:100%;background:#0056b3;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;padding:13px;cursor:pointer;font-family:inherit">📤 שגר</button>
     </div>
 
     <!-- Message Thread -->
@@ -311,6 +341,83 @@
       <button class="btn btn-outline" data-close="modalReject">ביטול</button>
       <button class="btn btn-danger" id="btnConfirmReject">דחה בקשה</button>
     </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     MODAL: Changelog
+════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalChangelog">
+  <div class="modal" style="max-width:520px;max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <h2>📋 מה חדש במערכת</h2>
+      <button class="modal-close" data-close="modalChangelog">✕</button>
+    </div>
+
+    <div class="changelog-version">
+      <span class="changelog-tag">v1.2</span>
+      <span class="changelog-date">יוני 2026</span>
+    </div>
+
+    <ul class="changelog-list">
+      <li>
+        <span class="cl-icon">👁️</span>
+        <div><strong>תצוגת תקופות לרכז</strong> — הרכז רואה את כל תקופות החופש עם סטטוס מאושר/נדחה/ממתין והערות המנהל לכל תקופה</div>
+      </li>
+      <li>
+        <span class="cl-icon">✅</span>
+        <div><strong>ממשק אישור מחודש למנהל</strong> — כפתורי [אשר] / [דחה] לכל תקופה בנפרד. תקופה מאושרת נצבעת ירוק, נדחית — אדום. כפתור "שגר" כחול גדול לשליחה</div>
+      </li>
+      <li>
+        <span class="cl-icon">💬</span>
+        <div><strong>הודעה לכל תקופה</strong> — המנהל יכול לצרף הערה נפרדת לכל תקופה בעת אישור או דחייה</div>
+      </li>
+      <li>
+        <span class="cl-icon">📧</span>
+        <div><strong>עיצוב מחדש של מיילים</strong> — כל מיילי ההתראה עוצבו מחדש עם RTL מלא, כותרת כחולה, תיבת מידע מעוצבת ולינק כניסה</div>
+      </li>
+      <li>
+        <span class="cl-icon">📊</span>
+        <div><strong>דוח חודשי אוטומטי</strong> — ב-28 לכל חודש נשלח מייל עם רשימת כל העובדים בחופש, מספר ימים וקישורי דוחות</div>
+      </li>
+      <li>
+        <span class="cl-icon">📄</span>
+        <div><strong>דף דוח אישי</strong> — לכל עובד דף מפורט הכולל: ממונה מאשר, תאריך הגשה + שם יום, תאריך אישור, פעילות אקדמית בתקופת ההיעדרות</div>
+      </li>
+      <li>
+        <span class="cl-icon">🖨️</span>
+        <div><strong>הדפסה והורדת PDF</strong> — כפתורי הדפסה והורדת PDF בדף הדוח האישי</div>
+      </li>
+    </ul>
+
+    <div class="changelog-version" style="margin-top:24px">
+      <span class="changelog-tag" style="background:#e8f0fb;color:#0056b3">v1.1</span>
+      <span class="changelog-date">מאי 2026</span>
+    </div>
+
+    <ul class="changelog-list">
+      <li>
+        <span class="cl-icon">📅</span>
+        <div><strong>בוחר תאריכים ויזואלי</strong> — לוח שנה inline לבחירת טווח תאריכים בבקשת חופש</div>
+      </li>
+      <li>
+        <span class="cl-icon">🗓️</span>
+        <div><strong>תצוגת יומן</strong> — מעבר בין תצוגת טבלה לתצוגת יומן חודשי בחופשות שלי</div>
+      </li>
+      <li>
+        <span class="cl-icon">📢</span>
+        <div><strong>הודעת מנהל בחופש</strong> — מנהל יכול להודיע על חופשה לרכזים נבחרים</div>
+      </li>
+      <li>
+        <span class="cl-icon">💬</span>
+        <div><strong>שיחת תגובות</strong> — מנהל ורכז יכולים לשלוח הודעות בתוך הבקשה</div>
+      </li>
+      <li>
+        <span class="cl-icon">🎉</span>
+        <div><strong>חגי ישראל</strong> — חגים מוחרגים אוטומטית מספירת ימי חופש</div>
+      </li>
+    </ul>
   </div>
 </div>
 

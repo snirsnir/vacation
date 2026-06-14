@@ -1,87 +1,198 @@
 // ============================================================
 // EMAIL.JS — EmailJS notifications + Calendar Invitations
 //
-// משתני תבנית EmailJS (template_fmr5r4q):
-//   {{to_name}}  → כתובת המייל של הנמען (To Email)
-//   {{name}}     → שם השולח (From Name)
-//   {{email}}    → כתובת Reply-To
-//   {{subject}}  → נושא המייל
-//   {{message}}  → תוכן ההודעה
+// הגדרות EmailJS הנדרשות בדשבורד:
+//   Subject  → {{subject}}       (לא ערך קבוע!)
+//   Content  → {{{message}}}     (שלוש סוגריים — מאפשר HTML)
+//   to_name  → כתובת מייל הנמען
+//   name     → שם שולח
+//   email    → reply-to
 // ============================================================
 
-// ── Send notification email via EmailJS ───────────────────
-async function sendEmail({ toEmail, subject, message, fromName = "מערכת חופשות טכנודע" }) {
+// ── HTML email wrapper ────────────────────────────────────
+function emailHtml(bodyContent) {
+  return `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;direction:rtl;background:#eef2f7;padding:28px 16px;margin:0">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,86,0.10)">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0056b3 0%,#0073e6 100%);padding:28px 32px;text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">🏖️</div>
+      <div style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.5px">מערכת חופשות טכנודע</div>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:32px 36px;color:#1a1a1a;font-size:15px;line-height:1.8">
+      ${bodyContent}
+    </div>
+
+    <!-- CTA Button -->
+    <div style="padding:0 36px 32px;text-align:center">
+      <a href="${SYSTEM_URL}"
+         style="display:inline-block;background:#0056b3;color:#ffffff;padding:14px 40px;
+                border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;
+                font-family:Arial,sans-serif;letter-spacing:0.3px">
+        ▶&nbsp; כניסה למערכת
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f4f6fa;padding:16px 32px;text-align:center;font-size:12px;color:#aaa;border-top:1px solid #eaecef">
+      מערכת חופשות טכנודע &nbsp;|&nbsp; הודעה אוטומטית — אין להשיב למייל זה
+    </div>
+  </div>
+</div>`;
+}
+
+// ── Styled info box ───────────────────────────────────────
+function infoBox(rows, borderColor = '#0056b3', bgColor = '#f0f6ff') {
+  return `<div style="background:${bgColor};border-right:4px solid ${borderColor};padding:14px 18px;border-radius:6px;margin:18px 0;font-size:14px;line-height:2">
+    ${rows.map(r => `<div>${r}</div>`).join('')}
+  </div>`;
+}
+
+// ── Send via EmailJS ──────────────────────────────────────
+async function sendEmail({ toEmail, subject, message, fromName = 'מערכת חופשות טכנודע' }) {
   try {
     await emailjs.send(
       EMAILJS_SERVICE_ID,
       EMAILJS_TEMPLATE_ID,
-      {
-        to_name: toEmail,                    // "To Email" בתבנית
-        name:    fromName,                   // "From Name" בתבנית
-        email:   CALENDAR_GMAIL,            // "Reply To" בתבנית
-        subject: subject,
-        message: message
-      },
+      { to_name: toEmail, name: fromName, email: CALENDAR_GMAIL, subject, message },
       EMAILJS_PUBLIC_KEY
     );
-    console.log(`✉️ מייל נשלח אל: ${toEmail} | נושא: ${subject}`);
+    console.log(`✉️ מייל נשלח → ${toEmail} | ${subject}`);
   } catch (err) {
-    console.error("❌ שגיאה בשליחת מייל:", err);
+    console.error('❌ שגיאה בשליחת מייל:', err);
   }
 }
 
-// ── Build ICS (calendar invite) content ───────────────────
-function buildICS({ summary, description, startDate, endDate, attendees }) {
-  // endDate inclusive → iCal exclusive (מוסיפים יום)
-  const end = new Date(endDate);
-  end.setDate(end.getDate() + 1);
+// ════════════════════════════════════════════════════════════
+//  אירועי מייל
+// ════════════════════════════════════════════════════════════
 
-  const fmt = d => new Date(d).toISOString().replace(/[-:]/g, '').split('T')[0];
-  const uid  = `vacation-${Date.now()}@technoda`;
-  const now  = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
-
-  const attendeeLines = attendees
-    .map(a => `ATTENDEE;CN=${a.name};RSVP=TRUE:mailto:${a.email}`)
-    .join('\r\n');
-
-  return [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Technoda//Vacation System//HE',
-    'METHOD:REQUEST',
-    'BEGIN:VEVENT',
-    `UID:${uid}`,
-    `DTSTAMP:${now}`,
-    `DTSTART;VALUE=DATE:${fmt(startDate)}`,
-    `DTEND;VALUE=DATE:${fmt(end)}`,
-    `SUMMARY:${summary}`,
-    `DESCRIPTION:${description}`,
-    `ORGANIZER;CN=מערכת חופשות טכנודע:mailto:${CALENDAR_GMAIL}`,
-    attendeeLines,
-    'STATUS:CONFIRMED',
-    'TRANSP:OPAQUE',
-    'END:VEVENT',
-    'END:VCALENDAR'
-  ].filter(Boolean).join('\r\n');
+// בקשה חדשה → מייל למנהל
+async function notifyManagerNewRequest(request) {
+  if (!request.managerWorkEmail) return;
+  await sendEmail({
+    toEmail: request.managerWorkEmail,
+    subject: `📋 בקשת חופש חדשה — ${request.userName}`,
+    message: emailHtml(`
+      <p>שלום <strong>${request.managerName}</strong>,</p>
+      <p><strong>${request.userName}</strong> הגיש/ה בקשת חופש חדשה:</p>
+      ${infoBox([
+        `📅 <strong>תאריכים:</strong>&nbsp; ${formatDates(request.dates)}`,
+        `📌 <strong>סיבה:</strong>&nbsp; ${request.reason || '—'}`
+      ])}
+      <p style="color:#555;font-size:14px">נא להיכנס למערכת לאישור או דחייה.</p>
+    `)
+  });
 }
 
-// ── Apps Script Web App URL ────────────────────────────────
-// הדבק כאן את ה-URL לאחר פריסה ב-Google Apps Script
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYlNxlAPowo6Ht1fTHC3Qb7MRra4fsQ63oFTJGnd681nGEYi4GCF6BwIPFUxAZ546j/exec"; // ← הדבק כאן את ה-URL
+// בקשה אושרה → מייל לרכז
+async function notifyUserApproved(request) {
+  await sendEmail({
+    toEmail: request.userWorkEmail,
+    subject: `✅ בקשת החופש שלך אושרה`,
+    message: emailHtml(`
+      <p>שלום <strong>${request.userName}</strong>,</p>
+      <p style="font-size:17px">🎉 בקשת החופש שלך <strong style="color:#1a7f4b">אושרה!</strong></p>
+      ${infoBox([
+        `📅 <strong>תאריכים:</strong>&nbsp; ${formatDates(request.dates)}`
+      ], '#1a7f4b', '#e8f7ee')}
+    `)
+  });
+}
 
-// ── Send calendar invite ───────────────────────────────────
+// בקשה אושרה חלקית → מייל לרכז
+async function notifyUserPartialApproval(request) {
+  const approvedStr = formatDates(request.approvedDates || []);
+  await sendEmail({
+    toEmail: request.userWorkEmail,
+    subject: `🔶 בקשת החופש שלך אושרה חלקית`,
+    message: emailHtml(`
+      <p>שלום <strong>${request.userName}</strong>,</p>
+      <p>בקשת החופש שלך <strong style="color:#e67e22">אושרה חלקית</strong>.</p>
+      ${infoBox([
+        `✅ <strong>תקופות שאושרו:</strong>&nbsp; ${approvedStr}`
+      ], '#e67e22', '#fef6ec')}
+      <p style="color:#555;font-size:14px">ניתן להיכנס למערכת, לראות את הפרטים ולהגיש ערעור אם נדרש.</p>
+    `)
+  });
+}
+
+// בקשה נדחתה → מייל לרכז
+async function notifyUserRejected(request, managerMessage) {
+  await sendEmail({
+    toEmail: request.userWorkEmail,
+    subject: `❌ בקשת החופש שלך נדחתה`,
+    message: emailHtml(`
+      <p>שלום <strong>${request.userName}</strong>,</p>
+      <p>בקשת החופש שלך ל-<strong>${formatDates(request.dates)}</strong> נדחתה.</p>
+      ${managerMessage ? infoBox([
+        `💬 <strong>הודעת המנהל/ת:</strong><br><em>"${managerMessage}"</em>`
+      ], '#c0392b', '#fdf0ee') : ''}
+      <p style="color:#555;font-size:14px">ניתן לפתוח את המערכת ולהגיב.</p>
+    `)
+  });
+}
+
+// הודעה ממנהל → מייל לרכז
+async function notifyUserMessage(request, messageText, managerName) {
+  await sendEmail({
+    toEmail: request.userWorkEmail,
+    subject: `💬 הודעה חדשה לגבי בקשת החופש שלך`,
+    message: emailHtml(`
+      <p>שלום <strong>${request.userName}</strong>,</p>
+      <p><strong>${managerName}</strong> שלח/ה הודעה:</p>
+      ${infoBox([`<em>"${messageText}"</em>`])}
+      <p style="color:#555;font-size:14px">ניתן להיכנס למערכת ולהשיב.</p>
+    `)
+  });
+}
+
+// תגובת רכז → מייל למנהל
+async function notifyManagerReply(request, replyText) {
+  if (!request.managerWorkEmail) return;
+  await sendEmail({
+    toEmail: request.managerWorkEmail,
+    subject: `💬 תגובה לגבי בקשת חופש — ${request.userName}`,
+    message: emailHtml(`
+      <p>שלום <strong>${request.managerName}</strong>,</p>
+      <p><strong>${request.userName}</strong> הגיב/ה לבקשת החופש:</p>
+      ${infoBox([`<em>"${replyText}"</em>`])}
+      <p style="color:#555;font-size:14px">ניתן להיכנס למערכת לטיפול.</p>
+    `)
+  });
+}
+
+// מנהל בחופש → לרכזים הנבחרים
+async function notifyManagerOnVacation({ managerName, startDate, endDate, targets }) {
+  for (const t of targets) {
+    await sendEmail({
+      toEmail: t.workEmail,
+      subject: `📢 ${managerName} בחופשה`,
+      message: emailHtml(`
+        <p>שלום <strong>${t.name}</strong>,</p>
+        <p><strong>${managerName}</strong> נמצא/ת בחופשה:</p>
+        ${infoBox([
+          `📅 <strong>תאריכים:</strong>&nbsp; ${formatDateHE(startDate)} — ${formatDateHE(endDate)}`
+        ])}
+      `)
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  Calendar Invite (Apps Script)
+// ════════════════════════════════════════════════════════════
+
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYlNxlAPowo6Ht1fTHC3Qb7MRra4fsQ63oFTJGnd681nGEYi4GCF6BwIPFUxAZ546j/exec";
+
 async function sendCalendarInvite({ toEmails, summary, description, startDate, endDate }) {
-  if (!APPS_SCRIPT_URL) {
-    console.warn('⚠️ APPS_SCRIPT_URL חסר ב-email.js');
-    return;
-  }
-
+  if (!APPS_SCRIPT_URL) return;
   try {
-    // no-cors: Apps Script redirects (302) ו-fetch לא יכול לקרוא תגובה מ-CORS שונה
-    // אבל הבקשה מגיעה לשרת ומייצרת את הזימון — fire-and-forget
     await fetch(APPS_SCRIPT_URL, {
       method:  'POST',
-      mode:    'no-cors',               // ← זה הפתרון לבעיית ה-CORS redirect
+      mode:    'no-cors',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ toEmails, summary, description, startDate, endDate })
     });
@@ -91,134 +202,11 @@ async function sendCalendarInvite({ toEmails, summary, description, startDate, e
   }
 }
 
-function downloadICS(icsContent, summary) {
-  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `${summary}.ics`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-// ════════════════════════════════════════════════════════════
-//  אירועי מייל ספציפיים
-// ════════════════════════════════════════════════════════════
-
-// בקשה חדשה → מייל למנהל
-async function notifyManagerNewRequest(request) {
-  if (!request.managerWorkEmail) return;
-  await sendEmail({
-    toEmail:  request.managerWorkEmail,
-    subject:  `📋 בקשת חופש חדשה — ${request.userName}`,
-    message:
-      `שלום ${request.managerName},\n\n` +
-      `${request.userName} הגיש/ה בקשת חופש:\n\n` +
-      `📅 תאריכים: ${formatDates(request.dates)}\n` +
-      `📌 סיבה: ${request.reason || '—'}\n\n` +
-      `נא להיכנס למערכת לאישור / דחייה.\n\n` +
-      `מערכת חופשות טכנודע`
-  });
-}
-
-// בקשה אושרה → מייל לרכז + זימון לשניהם
-async function notifyUserApproved(request) {
-  await sendEmail({
-    toEmail:  request.userWorkEmail,
-    subject:  `✅ בקשת החופש שלך אושרה`,
-    message:
-      `שלום ${request.userName},\n\n` +
-      `בקשת החופש שלך אושרה!\n\n` +
-      `📅 תאריכים: ${formatDates(request.dates)}\n\n` +
-      `זימון ביומן ישלח אליך בנפרד.\n\n` +
-      `מערכת חופשות טכנודע`
-  });
-
-  // שליחת זימון לרכז ולמנהל
-  const attendees = [
-    { name: request.userName,    email: request.userWorkEmail    },
-    { name: request.managerName, email: request.managerWorkEmail }
-  ].filter(a => a.email);
-
-  // Firebase מחזיר dates כ-object — ממירים למערך
-  const dates = Array.isArray(request.dates)
-    ? request.dates
-    : Object.values(request.dates || {});
-
-  for (const range of dates) {
-    await sendCalendarInvite({
-      toEmails:    attendees,
-      summary:     `חופשה — ${request.userName}`,
-      description: `חופשה מאושרת\nסיבה: ${request.reason || ''}`,
-      startDate:   range.startDate,
-      endDate:     range.endDate
-    });
-  }
-}
-
-// בקשה נדחתה → מייל לרכז
-async function notifyUserRejected(request, managerMessage) {
-  await sendEmail({
-    toEmail:  request.userWorkEmail,
-    subject:  `❌ בקשת החופש שלך נדחתה`,
-    message:
-      `שלום ${request.userName},\n\n` +
-      `בקשת החופש שלך ל-${formatDates(request.dates)} נדחתה.\n\n` +
-      `💬 הודעת המנהל/ת:\n"${managerMessage}"\n\n` +
-      `ניתן לפתוח את המערכת ולהגיב.\n\n` +
-      `מערכת חופשות טכנודע`
-  });
-}
-
-// הודעה ממנהל → מייל לרכז
-async function notifyUserMessage(request, messageText, managerName) {
-  await sendEmail({
-    toEmail:  request.userWorkEmail,
-    subject:  `💬 הודעה חדשה לגבי בקשת החופש שלך`,
-    message:
-      `שלום ${request.userName},\n\n` +
-      `${managerName} שלח/ה הודעה:\n\n"${messageText}"\n\n` +
-      `ניתן להיכנס למערכת ולהשיב.\n\n` +
-      `מערכת חופשות טכנודע`
-  });
-}
-
-// תגובת רכז → מייל למנהל
-async function notifyManagerReply(request, replyText) {
-  if (!request.managerWorkEmail) return;
-  await sendEmail({
-    toEmail:  request.managerWorkEmail,
-    subject:  `💬 תגובה לגבי בקשת חופש — ${request.userName}`,
-    message:
-      `שלום ${request.managerName},\n\n` +
-      `${request.userName} הגיב/ה לבקשת החופש:\n\n"${replyText}"\n\n` +
-      `ניתן להיכנס למערכת לטיפול.\n\n` +
-      `מערכת חופשות טכנודע`
-  });
-}
-
-// הודעת מנהל שהוא בחופש → לרכזים הנבחרים
-async function notifyManagerOnVacation({ managerName, startDate, endDate, targets }) {
-  for (const t of targets) {
-    await sendEmail({
-      toEmail:  t.workEmail,
-      toName:   t.name,
-      subject:  `📢 ${managerName} בחופשה`,
-      message:
-        `שלום ${t.name},\n\n` +
-        `${managerName} נמצא/ת בחופשה בין התאריכים:\n` +
-        `📅 ${formatDateHE(startDate)} — ${formatDateHE(endDate)}\n\n` +
-        `מערכת חופשות טכנודע`
-    });
-  }
-}
-
 // ── Helpers ────────────────────────────────────────────────
 function formatDates(dates) {
   if (!dates || !dates.length) return '—';
-  return dates.map(d => {
+  const arr = Array.isArray(dates) ? dates : Object.values(dates);
+  return arr.map(d => {
     const s = formatDateHE(d.startDate);
     const e = formatDateHE(d.endDate);
     return s === e ? s : `${s} – ${e}`;
