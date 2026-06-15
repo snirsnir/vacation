@@ -504,7 +504,14 @@ function createInlinePicker(row) {
     if (!selStart || selEnd) {
       selStart = iso; selEnd = null; hoverISO = null;
     } else {
-      if (iso === selStart) return;
+      if (iso === selStart) {
+        // Same date clicked twice → single-day selection
+        selEnd = selStart;
+        startInput.value = selStart;
+        endInput.value   = selEnd;
+        updateLabel(); updateDaysCounter(); updateRangeClasses();
+        return;
+      }
       const newStart = iso < selStart ? iso    : selStart;
       const newEnd   = iso < selStart ? selStart : iso;
 
