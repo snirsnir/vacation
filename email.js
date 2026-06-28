@@ -185,17 +185,13 @@ async function notifyManagerOnVacation({ managerName, startDate, endDate, target
 //  Calendar Invite (Apps Script)
 // ════════════════════════════════════════════════════════════
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYlNxlAPowo6Ht1fTHC3Qb7MRra4fsQ63oFTJGnd681nGEYi4GCF6BwIPFUxAZ546j/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygm-ixpLNvKNqk440whZP1aur22d8UAjsU_IOqKdAIdeZB89lmYC_iAealqgOkRSQ0/exec";
 
 async function sendCalendarInvite({ toEmails, summary, description, startDate, endDate }) {
   if (!APPS_SCRIPT_URL) return;
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method:  'POST',
-      mode:    'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ toEmails, summary, description, startDate, endDate })
-    });
+    const payload = encodeURIComponent(JSON.stringify({ toEmails, summary, description, startDate, endDate }));
+    await fetch(`${APPS_SCRIPT_URL}?payload=${payload}`, { method: 'GET', mode: 'no-cors' });
     console.log('📅 בקשת זימון נשלחה ל-Apps Script');
   } catch (err) {
     console.error('❌ שגיאה בשליחת זימון:', err);
