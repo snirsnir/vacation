@@ -135,8 +135,10 @@ function setupMainView() {
   if (currentUser.photoURL)
     document.getElementById('userAvatar').src = currentUser.photoURL;
 
-  const hasAdminAccess = currentProfile.isAdmin || ADMIN_EMAILS.includes(currentProfile.authEmail);
-  document.getElementById('adminMenuLink').style.display = hasAdminAccess ? '' : 'none';
+  const hasAdminAccess     = currentProfile.isAdmin || ADMIN_EMAILS.includes(currentProfile.authEmail);
+  const hasDashboardAccess = DASHBOARD_EMAILS.includes(currentProfile.authEmail);
+  document.getElementById('adminMenuLink').style.display     = hasAdminAccess     ? '' : 'none';
+  document.getElementById('dashboardMenuLink').style.display = hasDashboardAccess ? '' : 'none';
 
   if (currentProfile.role === 'manager') setupManagerView();
   else                                    setupCoordinatorView();
@@ -571,6 +573,7 @@ async function handleSubmitRequest(e) {
       userId:           currentUser.uid,
       userName:         p.name,
       userWorkEmail:    p.workEmail,
+      userAuthEmail:    p.authEmail,
       // Manager's details (for routing + email)
       managerAuthEmail: isManager ? (p.managerAuthEmail || null) : p.managerAuthEmail,
       managerName:      isManager ? (p.managerName      || null) : p.managerName,
@@ -748,6 +751,23 @@ async function approveRequest(req) {
     await updateRequest(req.id, { status: 'approved', updatedAt: Date.now() });
     await saveRangeMessages(req.id, indices.length ? indices : dates.map((_, i) => i), dates);
     await notifyUserApproved({ ...req, status: 'approved' });
+
+    const attendees = [
+      { name: req.userName,    email: req.userWorkEmail    || req.userAuthEmail    },
+      { name: req.managerName, email: req.managerWorkEmail || req.managerAuthEmail }
+    ].filter(a => a.email);
+    if (attendees.length) {
+      for (const d of dates) {
+        await sendCalendarInvite({
+          toEmails:    attendees,
+          summary:     `חופשה — ${req.userName}`,
+          description: `חופשה מאושרת\nסיבה: ${req.reason || ''}`,
+          startDate:   d.startDate,
+          endDate:     d.endDate
+        });
+      }
+    }
+
     closeModal('modalRequestDetail');
     showToast('✅ הבקשה אושרה!', 'success');
   } catch (err) {
@@ -1246,8 +1266,8 @@ async function partialApprove(req) {
     // זימון רק לתקופות שנבחרו עכשיו (לא כאלה שכבר היו מאושרות)
     const prevApproved = new Set(dates.map((d, i) => d.status === 'approved' ? i : -1));
     const attendees    = [
-      { name: req.userName,    email: req.userWorkEmail    },
-      { name: req.managerName, email: req.managerWorkEmail }
+      { name: req.userName,    email: req.userWorkEmail    || req.userAuthEmail    },
+      { name: req.managerName, email: req.managerWorkEmail || req.managerAuthEmail }
     ].filter(a => a.email);
 
     for (const i of selected) {

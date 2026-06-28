@@ -21,6 +21,13 @@ const CALENDAR_APP_PASS = "bwzt zuaa yezl hton";
 
 const SYSTEM_URL = "https://snirsnir.github.io/vacation/";
 
+// Gmail addresses that can access dashboard.html
+const DASHBOARD_EMAILS = [
+  "snirdoani@gmail.com",   // שניר דואני
+  "shulisason@gmail.com",  // שולי ששון
+  // רונית יאיר — יש להוסיף כתובת Gmail שלה כשתתווסף למערכת
+];
+
 // Gmail addresses that can access admin.html
 const ADMIN_EMAILS = [
   "gadimador@gmail.com",          // גדי מדור

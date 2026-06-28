@@ -57,6 +57,7 @@
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-primary" id="btnAddWorker">➕ הוסף עובד/ת</button>
           <button class="btn btn-outline" id="btnSeedWorkers" title="ייבא את כל העובדים מקובץ ה-CSV (לא ידרוס קיימים)">📥 ייבא מ-CSV</button>
+          <button class="btn btn-outline" id="btnSendReport" style="background:#1a7f4b;color:#fff;border-color:#1a7f4b">📊 שלח דוח חודשי</button>
         </div>
       </div>
 
@@ -179,6 +180,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <script src="config.js"></script>
 <script src="db.js"></script>

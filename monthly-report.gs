@@ -13,7 +13,7 @@
 // ============================================================
 
 const FIREBASE_DB_URL = 'https://vacation-788ea-default-rtdb.europe-west1.firebasedatabase.app';
-const REPORT_EMAIL    = 'papasnir@gmail.com';
+const REPORT_EMAILS   = 'shuli@technoda.org.il,ronit@technoda.org.il';
 const SYSTEM_URL      = 'https://snirsnir.github.io/vacation/';
 
 // ── Main function (runs on the 28th) ─────────────────────
@@ -151,13 +151,13 @@ function sendMonthlyReport() {
 
   // ── Send email ──────────────────────────────────────────
   GmailApp.sendEmail(
-    REPORT_EMAIL,
+    REPORT_EMAILS,
     `דוח חופשות - ${monthLabel} (${totalEmployees} עובדים, ${totalAllDays} ימים)`,
     `דוח חופשות ${monthLabel} — פתח בדפדפן לתצוגה מלאה`,
     { htmlBody: html, name: 'מערכת חופשות טכנודע' }
   );
 
-  Logger.log(`דוח חודשי נשלח ל-${REPORT_EMAIL} | ${monthLabel} | ${totalEmployees} עובדים`);
+  Logger.log(`דוח חודשי נשלח ל-${REPORT_EMAILS} | ${monthLabel} | ${totalEmployees} עובדים`);
 }
 
 // ── Helpers ───────────────────────────────────────────────
